@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SLAM — Műsorrend</title>
+  <link rel="shortcut icon" href="img/ooslam-removebg-preview.png">
+  <link rel="stylesheet" href="theme.css">
+  <link href="_app/immutable/assets/0.b9ef364e.css" rel="stylesheet">
+  <link rel="stylesheet" href="_app/immutable/assets/slamcss-all.css">
+  <script src="_app/immutable/entry/slam-all.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* Inter Black — ugyanaz a betűtípus, mint a kezdőlap PROGRAM kártyáin */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
+
+    :root {
+      --green:       #27dc54;
+      --green-2:     #11e281;
+      --green-dark:  #0c7a33;
+      --navy:        #0f1b2e;
+      /* ── műsorrend kék újratervezés (referenciakép alapján) ── */
+      --sched-navy:      #16294c;
+      --sched-navy-2:    #0f1e39;
+      --sched-blue:      #0a3fc4;
+      --sched-blue-2:    #1568f5;
+      --sched-blue-3:    #2f8bff;
+      --sched-live-1:    #0c7a33;
+      --sched-live-2:    #1fae55;
+      --sched-live-3:    var(--green);
+      --bg:          #0a0a0a;
+      --surface:     rgba(255,255,255,.045);
+      --surface2:    rgba(255,255,255,.08);
+      --border:      rgba(255,255,255,.08);
+      --border2:     rgba(255,255,255,.16);
+      --text:        #ffffff;
+      --muted:       rgba(255,255,255,.55);
+      --accent-soft: rgba(39,220,84,.12);
+      --font:        var(--font-primary, lato, sans-serif);
+      --font-hk:     var(--font-hackney, hackney, sans-serif);
+      --header-h:    7.2rem;
+      --radius:      1.8rem;
+    }
+
+    /* ── eredeti sötét alap + klub-fény izzás: a kártyák így "lebegnek" a sötét,
+       színes ködben — saját, egyedi rétege a SLAM "depth background" gondolatának ── */
+    html, body {
+      background:
+        radial-gradient(56rem 56rem at 12% -8%,  rgba(39,220,84,.22), transparent 60%),
+        radial-gradient(48rem 48rem at 108% 18%, rgba(155,92,255,.16), transparent 60%),
+        radial-gradient(64rem 64rem at 50% 115%, rgba(39,220,84,.12), transparent 60%),
+        var(--bg) !important;
+      background-attachment: fixed;
+    }
+    body {
+      color: var(--text);
+      font-family: var(--font);
+      margin: 0;
+      padding-top: var(--header-h);
+    }
+
+    .schedule-page {
+      max-width: 110rem;
+      margin: 0 auto;
+      padding: 2.4rem 2rem 10rem;
+    }
+
+    .schedule-shell {
+      padding: 2rem 0 0;
+    }
+
+
+    /* ── napválasztó ── */
+    .day-nav-wrap { margin-bottom: 2.4rem; }
+
+    .day-nav {
+      display: flex;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      gap: .8rem;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .day-nav::-webkit-scrollbar { display: none; }
+
+    /* eredeti (referenciakép szerinti) navy-gradiens pirula, most már a
+       kártyák teljes szélességét egyenletesen kitöltve */
+    .day-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      padding: 1.4rem 1rem;
+      border: none;
+      background: linear-gradient(160deg, var(--sched-navy), var(--sched-navy-2));
+      color: rgba(255,255,255,.85);
+      border-radius: 100rem;
+      cursor: pointer;
+      transition: background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      box-shadow: 0 8px 18px -10px rgba(0,0,0,.6);
+    }
+    .day-btn:hover { color: #fff; background: linear-gradient(160deg, #1d3560, var(--sched-navy)); transform: translateY(-1px); }
+    .day-btn.active:hover { background: linear-gradient(135deg, var(--sched-blue), var(--sched-blue-3)); transform: none; }
+    .day-btn.active {
+      background: linear-gradient(135deg, var(--sched-blue), var(--sched-blue-3));
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.9);
+      box-shadow: 0 10px 24px -8px rgba(2,96,240,.6);
+    }
+    .day-btn .d-name { font: 800 clamp(.85rem, 1.6vw, 1.15rem)/1 var(--font); letter-spacing: 0; text-transform: uppercase; }
+    .day-btn .d-date { display: none; }
+
+    /* ── kétoszlopos layout ── */
+    .schedule-body {
+      display: block;
+    }
+
+    /* ── bal: műsor lista ── */
+    .show-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    /* tömör kék sáv, referenciakép alapján — az élő adás (.live) ugyanezt a
+       formanyelvet kapja, csak zöld színátmenettel */
+    .show-row {
+      display: flex;
+      align-items: center;
+      flex-direction: row;
+      gap: 2.5rem;
+      min-height: 8.5rem;
+      padding: 1.6rem 1.8rem;
+      background: linear-gradient(120deg, #0260F0 55%, #11E281 145%);
+      border: none;
+      border-radius: 1.6rem;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease, filter .2s ease;
+      position: relative !important;
+      isolation: isolate;
+      overflow: hidden !important;
+      box-shadow: 0 14px 30px -18px rgba(2,64,200,.7);
+    }
+
+    .show-row:hover {
+      filter: brightness(1.06);
+      box-shadow: 0 18px 36px -16px rgba(2,64,200,.8);
+    }
+
+    /* a kiválasztott (megnyitott) sor kérésre NEM kap fehér gyűrűt —
+       a színe (kék/zöld) és a doboz-árnyéka is változatlan marad */
+    .show-row.active {
+      box-shadow: 0 18px 36px -16px rgba(2,64,200,.8);
+    }
+
+    /* az épp élő adás — zöld színátmenet, ugyanaz a formanyelv */
+    .show-row.live {
+      background: linear-gradient(135deg, var(--sched-live-1) 0%, var(--sched-live-2) 55%, var(--sched-live-3) 100%);
+      box-shadow: 0 14px 30px -18px rgba(12,122,51,.7);
+    }
+    .show-row.live:hover { box-shadow: 0 18px 36px -16px rgba(12,122,51,.8); }
+    .show-row.live.active { box-shadow: 0 18px 36px -16px rgba(12,122,51,.8); }
+    .show-row.live .show-row-time {
+      background: rgba(4,60,20,.55);
+    }
+
+    .show-row.past { opacity: 1; pointer-events: auto; }
+
+    /* DJ-fotó — most a nyíl BAL oldalán ül (a kép és a nyíl helye
+       felcserélve a kérésnek megfelelően). position:absolute-tal PONTOSAN a
+       sor magasságát tölti ki (top:0; bottom:0), nem lóg túl sehol —
+       garantáltan nem változtatja meg a sor méretét, és a sor
+       overflow:hidden + border-radius-a szabályosan körbevágja. */
+    .show-thumb {
+      position: absolute !important;
+      top: 0 !important; bottom: 0 !important; right: 4.4rem !important; left: auto !important;
+      width: auto !important;
+      height: auto !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      overflow: hidden !important;
+    }
+
+    .show-thumb img {
+      width: auto !important; height: 100% !important; object-fit: contain !important; object-position: center center !important;
+      display: block !important; max-width: none !important;
+    }
+
+    .show-row.live .show-thumb {
+      box-shadow: none;
+    }
+
+    /* a sornak jobbra helyet kell hagynia a fotónak + nyílnak, hogy a cím ne
+       csússzon alájuk — csak azoknál a soroknál, amiknek TÉNYLEG van fotójuk/
+       nyilúk (has-media), a sima kitöltő soroknál (WEEKEND stb.) nem */
+    .show-row.has-media { padding-right: 16.4rem !important; }
+
+    /* nyíl — most flush a sor jobb szélén (a kép és a nyíl helye felcserélve) */
+    .show-chevron {
+      position: absolute !important;
+      top: 50% !important; right: 0 !important; left: auto !important; bottom: auto !important;
+      transform: translateY(-50%) !important;
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      color: rgba(255,255,255,.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .show-chevron svg { width: 1.6rem; height: 1.6rem; }
+    .show-row:hover .show-chevron { color: #fff; }
+    .show-row.active .show-chevron { color: #fff; }
+
+    .show-row-meta { flex: 1; min-width: 0; }
+
+    /* sötét, félig áttetsző pirula-jelvény a világos sávon — ugyanaz a
+       "sötétebb árnyalat a saját színén" trükk működik kék és zöld
+       sorokon is, mert egyszerű fekete-áttetszőség, nem fix szín */
+    .show-row-time {
+      display: inline-flex;
+      align-items: center;
+      font: 400 1.8rem/1 agootack, var(--font);
+      color: #fff;
+      letter-spacing: .01em;
+      background: rgba(4,40,110,.6);
+      padding: 1rem 2.1rem;
+      border-radius: 100rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 6px rgba(255,255,255,.35);
+    }
+    .show-row-time .t {
+      display: inline-block;
+      transform: translate(0px, 3px); /* ugyanaz az optikai igazítás, mint a PROGRAM kártyáknál az agootack betűnél, a mérethez arányosítva */
+    }
+
+    .show-row-name {
+      font: 900 2.8rem/1.15 'Inter', var(--font);
+      color: #fff;
+      text-transform: uppercase;
+      text-shadow: 0 1px 3px rgba(0,0,0,.25);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .show-row-sub {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      margin-top: .6rem;
+      min-width: 0;
+    }
+
+    .show-row-dj {
+      display: none; /* a referenciaképen nincs külön DJ-alszöveg a cím alatt */
+      font: 600 1.3rem/1 var(--font);
+      color: rgba(255,255,255,.85);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .show-row-genre {
+      flex-shrink: 0;
+      font: 700 1.05rem/1 var(--font);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--green);
+      background: rgba(39,220,84,.14);
+      border: 1px solid rgba(39,220,84,.3);
+      padding: .35rem .9rem;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+
+    /* élő haladás-csík */
+    .show-row-progress-track {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 4px;
+      background: rgba(0,0,0,.2);
+    }
+    .show-row-progress {
+      height: 100%;
+      background: rgba(255,255,255,.85);
+      border-radius: 0 3px 3px 0;
+    }
+
+    /* "Most a rádióban" badge */
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .4rem .9rem;
+      background: rgba(255,45,85,.12);
+      border: 1px solid rgba(255,45,85,.35);
+      color: #ff6b87;
+      font: 700 1rem/1 var(--font);
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      white-space: nowrap;
+      flex-shrink: 0;
+      align-self: flex-start;
+      margin-top: .5rem;
+    }
+
+    .live-badge::before {
+      content: '';
+      width: .5rem; height: .5rem;
+      background: #ff2d55;
+      border-radius: 50%;
+      animation: pulse 1.3s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+
+    /* ── reszponzív ── */
+    @media (max-width: 700px) {
+      .schedule-shell { padding: 1.4rem 1.2rem 1.8rem; border-radius: 1.6rem; }
+      .day-btn { min-width: 7.2rem; padding: 1rem 1.4rem; }
+      .day-btn .d-name { font-size: 1.05rem; }
+      .show-row { min-height: 7.6rem; padding: 1.4rem 1.6rem; }
+      .show-thumb { right: 3.8rem !important; }
+      .show-row.has-media { padding-right: 12.8rem; }
+      .show-chevron { right: 0 !important; }
+      .show-row-name { font-size: 1.5rem; }
+      .show-row-time { font-size: 1.05rem; padding: .5rem 1.1rem; }
+    }
+
+    /* ── akadálymentesség: jól látható fókusz-jelzés ── */
+    .show-row:focus-visible,
+    .day-btn:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
+
+    /* ── mozgás-csökkentés preferencia esetén ── */
+    @media (prefers-reduced-motion: reduce) {
+      .slam-live-badge-dot::after {
+        animation: none !important;
+      }
+      .show-row { transition: none !important; }
+    }
+
+    /* =====================================================================
+       "Most élőben" sáv — Club Vibes Radio referenciakép alapján
+       (zöld→kék gradiens banner, fotó a bal alsó sarokban, play gomb,
+       "Most szól" doboz, "Lejátszott dalok" gomb)
+       ===================================================================== */
+
+    .cvr-card {
+      position: relative;
+      isolation: isolate;
+      display: flex;
+      align-items: center;
+      min-height: clamp(22rem, 32vw, 32rem);
+      border-radius: 2rem;
+      overflow: hidden;
+      --cvr-photo-w: clamp(22rem, 48%, 44rem);
+      --cvr-gutter: clamp(1.5rem, 3vw, 3rem);
+      /* lágy, "szósz"-formájú zöld folt olvad bele a kék alapba —
+         nem éles, függőleges vágás a két szín között */
+      background:
+        radial-gradient(62% 150% at 16% 55%, #22e78e 0%, #1de883 34%, rgba(29,232,131,0) 76%),
+        linear-gradient(120deg, #0a3fc4 22%, #072a86 75%, #051d63 100%);
+      box-shadow: 0 30px 60px -24px rgba(2,64,200,.55), 0 0 0 1px rgba(255,255,255,.06);
+    }
+
+    /* piros "ÉLŐBEN" jelvény, bal felső sarok, közvetlenül a gradiensen */
+    .cvr-badge {
+      position: absolute;
+      top: clamp(1.4rem, 3vw, 2.2rem); left: clamp(1.4rem, 3vw, 2.2rem);
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .55rem 1.2rem .5rem .9rem;
+      font: 800 1.1rem/1 var(--font-primary, sans-serif);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #fff;
+      background: #ff2d2d;
+      border-radius: 100px;
+      box-shadow: 0 8px 20px -8px rgba(255,45,45,.7);
+    }
+    .cvr-badge .slam-live-badge-dot { display: none; }
+    .slam-live-hero.is-offline .cvr-badge { background: rgba(20,20,25,.75); }
+
+    /* DJ / műsorvezető fotója (vagy műsor-grafikája) — NINCS külön
+       háttérdoboz vagy szegély: a kép közvetlenül a gradiens-alapon "áll",
+       alulra igazítva, mint egy valódi kivágott portré. Ha a forrásfájl
+       átlátszó hátterű, teljesen egybeolvad a színátmenettel; ha nem
+       (pl. egy teli hátterű plakát-grafika), a lekerekített sarok +
+       finom árnyék akkor is rendezett, "lebegő" hatást ad, nem tömör
+       dobozt. */
+    .cvr-photo {
+      position: absolute;
+      z-index: 1;
+      left: clamp(2.5rem, 7vw, 6rem);
+      bottom: 0;
+      top: 0;
+      width: var(--cvr-photo-w);
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      pointer-events: none;
+      /* a fotó jobb szélén finoman elolvad a gradiensbe,
+         nincs éles doboz-perem */
+      -webkit-mask-image: none;
+      mask-image: none;
+      overflow: visible;
+    }
+    .cvr-photo img {
+      width: auto;
+      height: 100%;
+      max-width: none;
+      object-fit: contain;
+      display: block;
+      border-radius: 0;
+      filter: none;
+    }
+    .cvr-photo .slam-live-monogram {
+      font: 800 clamp(5rem, 9vw, 9rem)/1 var(--font-hackney, sans-serif);
+      color: rgba(255,255,255,.3);
+    }
+
+    /* jobb oldali tartalom — a fotó sávja + egy VALÓDI hézag ("gutter")
+       után indul, hogy sose csússzon össze a fotóval */
+    .cvr-content {
+      position: relative;
+      z-index: 2;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: clamp(2rem, 3.6vw, 3.2rem);
+      padding: clamp(2.2rem, 4vw, 3.4rem) clamp(2rem, 4vw, 3.6rem);
+      margin-left: calc(var(--cvr-photo-w) + var(--cvr-gutter));
+    }
+
+    .cvr-top {
+      display: flex;
+      align-items: center;
+      gap: clamp(1.4rem, 2.4vw, 2rem);
+      flex-wrap: wrap;
+    }
+
+    .cvr-play {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: clamp(5.2rem, 6vw, 6.2rem); height: clamp(5.2rem, 6vw, 6.2rem);
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: #27dc54;
+      color: #06210f;
+      box-shadow: 0 16px 34px -10px rgba(39,220,84,.7);
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+    }
+    .cvr-play svg { width: 2.2rem; height: 2.2rem; margin-left: .2rem; }
+    .cvr-play:hover { transform: scale(1.06) translateY(-2px); }
+    .cvr-play:active { transform: scale(.93); }
+    .cvr-play.playing { background: #ff2d2d; color: #fff; }
+
+    .cvr-titles {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: .8rem;
+      min-width: 0;
+    }
+
+    .cvr-show-pill {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 194px !important;
+      height: 34px !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      overflow: visible;
+      white-space: nowrap;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+      font-weight: 900 !important;
+      font-size: 16px !important;
+      line-height: 1 !important;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      color: #fff;
+      background: #060f1d;
+      padding: 0 .9rem !important;
+      border-radius: 100px;
+    }
+
+    .cvr-time-pill {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 338px !important;
+      height: 33px !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      overflow: visible;
+      white-space: nowrap;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+      font-weight: 900 !important;
+      font-size: 16px !important;
+      line-height: 1 !important;
+      text-transform: uppercase;
+      letter-spacing: -.01em;
+      color: #000000;
+      background: rgba(255,255,255,.92);
+      padding: 0 .8rem !important;
+      border-radius: 100px;
+    }
+
+    /* "Most szól" doboz */
+    .cvr-nowplaying {
+      display: inline-flex;
+      align-items: center;
+      gap: 1.3rem;
+      align-self: flex-start;
+      width: clamp(28rem, 40vw, 44rem);
+      max-width: 100%;
+      padding: 1.3rem 2.4rem 1.3rem 1.5rem;
+      border: 1.5px solid rgba(255,255,255,.6);
+      border-radius: 100px;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+    }
+    .cvr-nowplaying-label {
+      flex-shrink: 0;
+      min-width: 3.6rem;
+      font: 800 .95rem/1.2 var(--font-primary, sans-serif);
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      color: #fff;
+      text-align: center;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+    }
+    .cvr-nowplaying-art {
+      flex-shrink: 0;
+      width: 4.6rem; height: 4.6rem;
+      border-radius: .6rem;
+      background: #060f1d;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cvr-nowplaying-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .cvr-nowplaying-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+    }
+    .cvr-nowplaying-title {
+      font: 800 1.2rem/1.25 var(--font-primary, sans-serif);
+      text-transform: uppercase;
+      color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+    }
+    .cvr-nowplaying-artist {
+      font: 600 1rem/1.25 var(--font-primary, sans-serif);
+      text-transform: uppercase;
+      color: rgba(216,228,255,.8);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'Inter', var(--font-primary, sans-serif) !important;
+    }
+
+    /* "Lejátszott dalok" gomb, jobbra lent — teli kék pirula, sötétebb
+       kék "kapszula" gombbal a végén, a referenciakép szerint */
+    .cvr-history {
+      align-self: flex-end;
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      text-decoration: none;
+      background: #1568f5;
+      border-radius: 100px;
+      box-shadow: 0 12px 26px -10px rgba(2,64,200,.7);
+      transition: background .2s ease, transform .2s ease;
+    }
+    .cvr-history-text {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 2rem 0 1.8rem;
+      height: 2.6rem;
+      font: 800 1.05rem/1 var(--font-primary, sans-serif);
+      text-transform: uppercase;
+      letter-spacing: .01em;
+      color: #fff;
+      white-space: nowrap;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .cvr-history-arrow {
+      flex-shrink: 0;
+      width: 2.6rem; height: 2.6rem;
+      margin: .35rem;
+      border-radius: 50%;
+      background: #0a3fc4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cvr-history-arrow svg { width: 1rem; height: 1rem; color: #fff; transition: transform .2s; }
+    .cvr-history:hover { background: #1f74ff; transform: translateY(-1px); }
+    .cvr-history:hover .cvr-history-arrow svg { transform: translateX(2px); }
+
+    /* JS-kompatibilitási elemek (DJ-sor, "Következik" blokk) — vizuálisan
+       elrejtve, de a meglévő updateLiveHero() logika zavartalanul tovább
+       tudja írni a tartalmukat */
+    .cvr-hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .cvr-card { flex-direction: column; align-items: stretch; min-height: auto; padding-top: 13rem; }
+      .cvr-photo {
+        position: absolute; left: 50%; top: 1rem; bottom: auto;
+        transform: translateX(-50%); width: 11rem; height: 11rem;
+        -webkit-mask-image: none; mask-image: none;
+      }
+      .cvr-photo img { height: 100%; object-fit: cover; border-radius: 1rem; }
+      .cvr-content { margin-left: 0; padding: 1.8rem; align-items: center; text-align: center; }
+      .cvr-top { justify-content: center; }
+      .cvr-titles { align-items: center; }
+      .cvr-nowplaying { align-self: center; }
+      .cvr-history { align-self: center; }
+    }
+
+    @media (max-width: 480px) {
+      .cvr-show-pill { font-size: 1.2rem; padding: .7rem 1.3rem; }
+      .cvr-time-pill { font-size: .95rem; padding: .65rem 1.3rem; }
+      .cvr-play { width: 4.6rem; height: 4.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<script src="slam-depth-background.js"></script>
+<script src="slam-modern-nav.js"></script>
+
+<div class="schedule-page">
+
+  <div class="slam-live-hero" id="live-hero">
+    <div class="cvr-card">
+
+      <!-- piros "ÉLŐBEN" jelvény -->
+      <span class="cvr-badge" id="live-hero-badge">
+        Élőben
+      </span>
+
+      <!-- DJ / műsorvezető fotója, a sáv aljához igazítva -->
+      <div class="cvr-photo" id="live-hero-art">
+        <div class="slam-live-monogram" id="live-hero-monogram">S</div>
+      </div>
+
+      <!-- jobb oldali tartalom -->
+      <div class="cvr-content">
+
+        <div class="cvr-top">
+          <button class="cvr-play" id="live-hero-play" type="button" aria-label="Lejátszás / szünet">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+          </button>
+
+          <div class="cvr-titles">
+            <span class="cvr-show-pill" id="live-hero-show" aria-live="polite">SLAM Non-Stop</span>
+            <span class="cvr-time-pill" id="live-hero-duration"></span>
+          </div>
+        </div>
+
+        <div class="cvr-nowplaying">
+          <span class="cvr-nowplaying-label">Most<br>szól</span>
+          <span class="cvr-nowplaying-art">
+            <img src="img/01/logos2.png" alt="" id="live-hero-track-art">
+          </span>
+          <span class="cvr-nowplaying-info">
+            <span class="cvr-nowplaying-title" id="live-hero-track-title">Zene címe</span>
+            <span class="cvr-nowplaying-artist" id="live-hero-track-artist">Zene előadója</span>
+          </span>
+        </div>
+
+        <a href="playlist.html" class="cvr-history" id="live-hero-more">
+          <span class="cvr-history-text">Lejátszott dalok</span>
+          <span class="cvr-history-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </span>
+        </a>
+
+        <!-- a meglévő updateLiveHero()-nak szüksége van ezekre az elemekre,
+             de az új dizájnban nem jelennek meg külön -->
+        <div class="cvr-hidden" aria-hidden="true">
+          <div id="live-hero-dj-row">
+            <div id="live-hero-dj-avatar"></div>
+            <span id="live-hero-dj"></span>
+          </div>
+          <div id="live-hero-next">
+            <span id="live-hero-next-name"></span>
+            <span id="live-hero-next-meta"></span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div class="schedule-shell">
+
+    <!-- napválasztó -->
+    <div class="day-nav-wrap">
+      <div class="day-nav" id="day-nav"></div>
+    </div>
+
+    <!-- műsorlista -->
+    <div class="schedule-body">
+      <div class="show-list" id="show-list"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="slam-reorder.js"></script>
+<script src="slam-footer-reimagined.js"></script>
+
+<script src="schedule-data.js"></script>
+<script>
+
+function toMins(t){var p=t.split(':').map(Number);return p[0]*60+p[1];}
+
+/* egyszerű szlög-generátor a műsor-oldalak linkjéhez — cseréld le a
+   href-eket a valós oldalakra, ha elkészülnek (ld. buildList) */
+function slugify(str){
+  return (str||'').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+function nowMins(){var n=new Date();return n.getHours()*60+n.getMinutes();}
+
+var jsDay=new Date().getDay();
+var todayIdx=jsDay===0?6:jsDay-1;
+var selectedDay=todayIdx;
+
+function getStatus(s,dayIdx){
+  if(dayIdx!==todayIdx)return'normal';
+  var now=nowMins(),start=toMins(s.time),end=toMins(s.end);
+  if(end<start)end+=1440;
+  if(now>=start&&now<end)return'live';
+  if(now<start&&start-now<=120)return'next';
+  if(now>=end)return'past';
+  return'normal';
+}
+
+function liveProgress(s){
+  var now=nowMins(),start=toMins(s.time),end=toMins(s.end);
+  if(end<start)end+=1440;
+  return Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));
+}
+
+/* ---- napválasztó ---- */
+function buildDayNav(){
+  var el=document.getElementById('day-nav');
+  el.innerHTML='';
+  var today=new Date();
+  DAYS_SHORT.forEach(function(d,offset){
+    var i=(todayIdx+offset)%7;
+    var date=new Date(today);
+    date.setDate(today.getDate()+offset);
+    var btn=document.createElement('button');
+    btn.className='day-btn'+(i===selectedDay?' active':'');
+    var mo=date.toLocaleDateString('hu-HU',{day:'numeric',month:'short'});
+    var label = offset===0 ? 'MA' : (offset===1 ? 'HOLNAP' : (DAYS_SHORT[i].toUpperCase()+' '+date.getDate()+' '+HU_MONTHS_ABBR[date.getMonth()]));
+    btn.innerHTML='<span class="d-name">'+label+'</span><span class="d-date">'+mo+'</span>';
+    btn.setAttribute('aria-label',DAYS_FULL[i]+', '+mo);
+    if(i===selectedDay) btn.setAttribute('aria-current','true');
+    btn.onclick=function(){selectedDay=i;buildDayNav();buildList();};
+    el.appendChild(btn);
+  });
+}
+
+/* ---- lista ---- */
+function buildList(){
+  var list=document.getElementById('show-list');
+  list.innerHTML='';
+  var shows=SHOWS[selectedDay]||[];
+  var autoSelected=false;
+
+  shows.forEach(function(s,i){
+    var status=getStatus(s,selectedDay);
+    var row=document.createElement('a');
+
+    var hasRealDj = !!(s.dj && s.dj !== '.');
+    var djPhoto = hasRealDj ? (DJ_PHOTOS[s.dj] || s.photo || '') : (s.photo || '');
+    var hasMedia = !!(hasRealDj || djPhoto);
+    row.className='show-row'+(status!=='normal'?' '+status:'')+(hasMedia?' has-media':'');
+
+    var badgeHtml='';
+    if(status==='live') badgeHtml='';
+
+    /* az élő sávon lévő fehér progress-csíkot kérésre eltávolítottuk */
+    var progressHtml='';
+
+    /* csak akkor jelenik meg fotó/nyíl, ha VAN valódi tartalom (megnevezett
+       műsorvezető/DJ fotóval) — a sima kitöltő sávok (WEEKEND, GOOD MORNING!,
+       a "." DJ-placeholder) sem logó-thumbot, sem nyilat nem kapnak, a
+       referenciakép mintáját követve */
+    var djHtml = hasRealDj ? '<div class="show-row-dj">'+s.dj+'</div>' : '';
+
+    /* Ha a műsorhoz meg van adva egyedi URL (s.url a schedule-data.js-ben),
+       azt használjuk. Ha nincs, a generikus musor-reszlet.html sablonra
+       mutat, a műsornév szlögesített változatával. */
+    row.href = s.url ? s.url : 'musor-reszlet.html?nev='+slugify(s.name);
+    row.setAttribute('aria-label',s.name+(hasRealDj?' – '+s.dj:'')+', '+s.time+' – '+s.end+(status==='live'?', most a rádióban':''));
+
+    var thumbHtml = djPhoto
+      ? '<div class="show-thumb"><img src="'+djPhoto+'" alt="'+s.dj+'" style="width:auto;height:100%;object-fit:contain;display:block;"></div>'
+      : '';
+    var chevronHtml = hasMedia
+      ? '<div class="show-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>'
+      : '';
+
+    row.innerHTML=
+      '<div class="show-row-meta">'+
+        '<div class="show-row-time"><span class="t">'+s.time+' – '+s.end+'</span></div>'+
+        '<div class="show-row-name">'+s.name+'</div>'+
+        djHtml+
+        badgeHtml+
+      '</div>'+
+      thumbHtml+
+      chevronHtml+
+      progressHtml;
+
+    list.appendChild(row);
+
+    /* auto-highlight: élő sort vizuálisan kiemeljük, de popup nem nyílik */
+    if(status==='live'&&!autoSelected){
+      autoSelected=true;
+      row.classList.add('active');
+    } else if(!autoSelected&&i===0){
+      row.classList.add('active');
+    }
+  });
+}
+
+/* ---- élő-sáv hero frissítése (mindig a MAI nap aktuális adása) ---- */
+function fmtDuration(startStr,endStr){
+  return 'Hallgasd '+startStr+' és '+endStr+' között';
+}
+
+/* a következő, még nem aktuális műsor megkeresése — ha mára nincs
+   már több, a következő nap első műsorát adja vissza */
+function findNextShow(){
+  var now=new Date();
+  var nowM=now.getHours()*60+now.getMinutes();
+  var list=SHOWS[todayIdx]||[];
+  for(var i=0;i<list.length;i++){
+    if(toMins(list[i].time)>nowM) return list[i];
+  }
+  var nextIdx=(todayIdx+1)%7;
+  var nextList=SHOWS[nextIdx]||[];
+  return nextList[0]||null;
+}
+
+function updateLiveHero(){
+  var todays=SHOWS[todayIdx]||[];
+  var current=null;
+  for(var i=0;i<todays.length;i++){
+    if(getStatus(todays[i],todayIdx)==='live'){ current=todays[i]; break; }
+  }
+
+  var heroEl      = document.getElementById('live-hero');
+  var badgeEl     = document.getElementById('live-hero-badge');
+  var showEl      = document.getElementById('live-hero-show');
+  var durationEl  = document.getElementById('live-hero-duration');
+  var artEl       = document.getElementById('live-hero-art');
+  var avatarEl    = document.getElementById('live-hero-dj-avatar');
+  var djRowEl     = document.getElementById('live-hero-dj-row');
+  var djEl        = document.getElementById('live-hero-dj');
+  var moreEl      = document.getElementById('live-hero-more');
+  var nextNameEl  = document.getElementById('live-hero-next-name');
+  var nextMetaEl  = document.getElementById('live-hero-next-meta');
+
+  /* következő műsor */
+  var next=findNextShow();
+  if(nextNameEl&&nextMetaEl){
+    if(next){
+      nextNameEl.textContent=next.name;
+      nextMetaEl.textContent=(next.dj?next.dj+' · ':'')+next.time;
+    } else {
+      nextNameEl.textContent='';
+      nextMetaEl.textContent='';
+    }
+  }
+
+  if(current){
+    heroEl.classList.remove('is-offline');
+    badgeEl.innerHTML='<span class="slam-live-badge-dot"></span>Élőben';
+    showEl.textContent=current.name;
+    durationEl.textContent=fmtDuration(current.time,current.end);
+    durationEl.style.display='';
+
+    /* bal panel: DJ_PHOTOS > show.photo > monogram */
+    var djPhoto = (current.dj && DJ_PHOTOS[current.dj]) || current.photo || '';
+    if(djPhoto){
+      artEl.innerHTML='<img src="'+djPhoto+'" alt="'+(current.dj||current.name)+'">';
+    } else {
+      var init=current.initial||current.name.charAt(0);
+      artEl.innerHTML='<div class="slam-live-monogram">'+init+'</div>';
+      if(avatarEl) avatarEl.textContent=init;
+    }
+
+    /* DJ sor */
+    if(djEl&&djRowEl){
+      if(current.dj){
+        djEl.textContent=current.dj;
+        if(avatarEl) avatarEl.textContent=current.dj.charAt(0);
+        djRowEl.style.display='';
+      } else {
+        djRowEl.style.display='none';
+      }
+    }
+
+    if(moreEl) moreEl.dataset.show=current.name;
+
+  } else {
+    heroEl.classList.add('is-offline');
+    badgeEl.innerHTML='<span class="slam-live-badge-dot"></span>Most szól';
+    showEl.textContent='SLAM Non-Stop';
+    durationEl.textContent='';
+    durationEl.style.display='none';
+    artEl.innerHTML='<div class="slam-live-monogram">S</div>';
+    if(djRowEl) djRowEl.style.display='none';
+  }
+}
+
+/* ---- élő-sáv hero play-gomb a meglévő stream-lejátszóhoz kötve ---- */
+(function bindLiveHeroPlay(){
+  var btn=document.getElementById('live-hero-play');
+  if(!btn)return;
+  var icon=btn.querySelector('svg');
+
+  function setIcon(playing){
+    icon.innerHTML=playing
+      ? '<rect x="6" y="5" width="4" height="14"></rect><rect x="14" y="5" width="4" height="14"></rect>'
+      : '<path d="M8 5v14l11-7z"></path>';
+    btn.classList.toggle('playing',playing);
+  }
+
+  btn.addEventListener('click',function(){
+    if(typeof window.playPause==='function'){
+      window.playPause();
+    } else if(window.audio){
+      window.audio.paused?window.audio.play():window.audio.pause();
+    }
+  });
+
+  function bindAudio(){
+    if(!window.audio)return false;
+    window.audio.addEventListener('play',function(){setIcon(true);});
+    window.audio.addEventListener('pause',function(){setIcon(false);});
+    setIcon(!window.audio.paused);
+    return true;
+  }
+
+  if(!bindAudio()){
+    var tries=0;
+    var iv=setInterval(function(){
+      tries+=1;
+      if(bindAudio()||tries>20)clearInterval(iv);
+    },250);
+  }
+})();
+
+buildDayNav();
+buildList();
+updateLiveHero();
+setInterval(function(){buildList();updateLiveHero();},60000);
+</script>
+</body>
+</html>

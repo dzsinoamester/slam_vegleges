@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SLAM — SLAM Non-Stop</title>
+  <link rel="shortcut icon" href="../img/ooslam-removebg-preview.png">
+  <link rel="stylesheet" href="../theme.css">
+  <link href="../_app/immutable/assets/0.b9ef364e.css" rel="stylesheet">
+  <link rel="stylesheet" href="../_app/immutable/assets/slamcss-all.css">
+  <script src="../_app/immutable/entry/slam-all.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
+
+    :root {
+      --green:       #27dc54;
+      --green-2:     #11e281;
+      --sched-live-1: #0c7a33;
+      --sched-live-2: #1fae55;
+      --sched-blue:  #0a3fc4;
+      --sched-blue-2: #1568f5;
+      --sched-blue-3: #2f8bff;
+      --text:        #ffffff;
+      --muted:       rgba(255,255,255,.6);
+      --border:      rgba(255,255,255,.1);
+      --surface:     rgba(255,255,255,.035);
+      --font:        var(--font-primary, lato, sans-serif);
+      --header-h:    7.2rem;
+    }
+
+    body {
+      color: var(--text);
+      font-family: var(--font);
+      margin: 0;
+      padding-top: var(--header-h);
+    }
+
+    .ns-page {
+      max-width: 76rem;
+      margin: 0 auto;
+      padding: 2.4rem 2rem 10rem;
+    }
+
+    .ns-back {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      font: 700 1.3rem/1 var(--font);
+      color: var(--muted);
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color .2s ease;
+    }
+    .ns-back:hover { color: #fff; }
+    .ns-back svg { width: 1.6rem; height: 1.6rem; }
+
+    /* ── teljes szélességű hero, ambient blur-art háttérrel
+       (ugyanaz a technika, mint a mini-player .slam-full-ambient-nál:
+       a logóból/borítóból épített, erősen blur-ölt "hangulati" kép) ── */
+    .ns-hero {
+      position: relative;
+      isolation: isolate;
+      min-height: 32rem;
+      border-radius: 1.8rem;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      padding: 3.2rem;
+      background: #0a0a0a;
+    }
+    .ns-hero::before {
+      content: "";
+      position: absolute;
+      inset: -15%;
+      background-image: url('img/01/logos.png');
+      background-position: center;
+      background-size: 60%;
+      background-repeat: no-repeat;
+      filter: blur(60px) saturate(1.6) brightness(.6);
+      opacity: .9;
+      z-index: -2;
+    }
+    .ns-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(10,10,10,0) 0%, rgba(10,10,10,.55) 55%, rgba(10,10,10,.92) 100%);
+      z-index: -1;
+    }
+
+    .ns-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.4rem;
+    }
+    .ns-live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      font: 800 1.1rem/1 var(--font);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(12,122,51,.75);
+      padding: .6rem 1.2rem;
+      border-radius: 100rem;
+    }
+    .ns-live-pill .dot {
+      width: .6rem; height: .6rem;
+      border-radius: 50%;
+      background: #fff;
+      animation: ns-blink 1.6s ease-in-out infinite;
+    }
+    @keyframes ns-blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .ns-genre {
+      font: 700 1.05rem/1 var(--font);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.75);
+    }
+
+    .ns-name {
+      font: 900 clamp(2.8rem, 6vw, 4.6rem)/1.05 'Inter', var(--font);
+      text-transform: uppercase;
+      text-shadow: 0 2px 12px rgba(0,0,0,.5);
+      margin: 0 0 .6rem;
+    }
+
+    .ns-tagline {
+      font: 400 1.4rem/1.5 var(--font);
+      color: rgba(255,255,255,.8);
+      max-width: 42rem;
+    }
+
+    .ns-section-title {
+      margin: 3.4rem 0 1.2rem;
+      font: 800 1.3rem/1 var(--font);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .ns-desc {
+      font: 400 1.5rem/1.65 var(--font);
+      color: rgba(255,255,255,.85);
+      max-width: 62rem;
+    }
+    .ns-desc p { margin: 0 0 1.2rem; }
+
+    .ns-tracklist {
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+    }
+    .ns-track-row {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      padding: 1rem 1.4rem;
+      border: 1px solid var(--border);
+      border-radius: 1.1rem;
+      background: var(--surface);
+    }
+    .ns-track-idx {
+      font: 800 1.2rem/1 var(--font);
+      color: var(--muted);
+      width: 1.8rem;
+      flex-shrink: 0;
+    }
+    .ns-track-info { min-width: 0; flex: 1; }
+    .ns-track-title {
+      font: 700 1.3rem/1.3 var(--font);
+      color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ns-track-artist {
+      font: 400 1.15rem/1.3 var(--font);
+      color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ns-track-time {
+      font: 400 1.1rem/1 var(--font);
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .ns-tracklist-more {
+      display: inline-block;
+      margin-top: 1.2rem;
+      font: 700 1.2rem/1 var(--font);
+      color: var(--green-2);
+      text-decoration: none;
+    }
+    .ns-tracklist-more:hover { text-decoration: underline; }
+
+    .ns-week-list {
+      display: flex;
+      flex-direction: column;
+      gap: .8rem;
+    }
+    .ns-week-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 1.6rem;
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      background: var(--surface);
+    }
+    .ns-week-day { font: 700 1.3rem/1 var(--font); color: #fff; }
+    .ns-week-time { font: 400 1.3rem/1 var(--font); color: var(--muted); }
+
+    .ns-related-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .ns-related-card {
+      display: block;
+      padding: 1.4rem 1.6rem;
+      border-radius: 1.2rem;
+      background: linear-gradient(120deg, var(--sched-blue) 55%, var(--green-2) 145%);
+      color: #fff;
+      text-decoration: none;
+      box-shadow: 0 12px 24px -16px rgba(2,64,200,.7);
+      transition: transform .2s ease, filter .2s ease;
+    }
+    .ns-related-card:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .ns-related-name {
+      font: 900 1.3rem/1.2 'Inter', var(--font);
+      text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+    .ns-related-time {
+      font: 400 1.1rem/1 var(--font);
+      color: rgba(255,255,255,.8);
+    }
+
+    .ns-share-row {
+      display: flex;
+      gap: .8rem;
+      flex-wrap: wrap;
+    }
+    .ns-share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .9rem 1.5rem;
+      border-radius: 100rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: #fff;
+      font: 700 1.2rem/1 var(--font);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .ns-share-btn:hover { background: rgba(255,255,255,.08); border-color: var(--border); }
+    .ns-share-btn svg { width: 1.6rem; height: 1.6rem; }
+    .ns-share-btn.copied { color: var(--green-2); border-color: var(--green-2); }
+
+    @media (max-width: 640px) {
+      .ns-related-grid { grid-template-columns: 1fr; }
+      .ns-hero { min-height: 26rem; padding: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<script src="../slam-depth-background.js"></script>
+<script src="../slam-modern-nav.js"></script>
+
+<div class="ns-page">
+
+  <a class="ns-back" href="../musorrend.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Vissza a műsorrendhez
+  </a>
+
+  <div class="ns-hero">
+    <div>
+      <div class="ns-badge-row" id="ns-badge-row"></div>
+      <h1 class="ns-name">SLAM Non-Stop</h1>
+      <p class="ns-tagline">Megállás nélkül a legjobb SLAM-zenék, a legtöbb DANCE és ELEKTRONIKUS zenével fűszerezve.</p>
+    </div>
+  </div>
+
+  <div class="ns-section-title">A műsorról</div>
+  <div class="ns-desc">
+    <p>A SLAM Non-Stop a csatorna gerince: ez szól mindig, amikor épp nincs élő, névvel jelzett műsor a sávban — hajnalban, éjszaka, és a napi blokkok közötti réseken. Nincs benne bemondás, nincs megszakítás, csak folyamatos, gondosan válogatott dance és elektronikus zene.</p>
+    <p>A cél egyszerű: legyen mindig egy megbízható alapréteg a SLAM hangzásából, amire bármikor rá lehet kapcsolódni — akár háttérzeneként, akár teljes figyelemmel hallgatva.</p>
+  </div>
+
+  <div class="ns-section-title">Legutóbb játszott számok</div>
+  <div class="ns-tracklist" id="ns-tracklist">
+    <!-- PLACEHOLDER LISTA — cseréld le a valós lejátszási előzmény
+         adatforrására (ugyanarra, amit a live-hero "Most szól" widget
+         használ), ha elkészül az API-kötés -->
+    <div class="ns-track-row"><span class="ns-track-idx">1</span><div class="ns-track-info"><div class="ns-track-title">Zene címe</div><div class="ns-track-artist">Zene előadója</div></div><span class="ns-track-time">2 perce</span></div>
+    <div class="ns-track-row"><span class="ns-track-idx">2</span><div class="ns-track-info"><div class="ns-track-title">Zene címe</div><div class="ns-track-artist">Zene előadója</div></div><span class="ns-track-time">6 perce</span></div>
+    <div class="ns-track-row"><span class="ns-track-idx">3</span><div class="ns-track-info"><div class="ns-track-title">Zene címe</div><div class="ns-track-artist">Zene előadója</div></div><span class="ns-track-time">10 perce</span></div>
+  </div>
+  <a class="ns-tracklist-more" href="../playlist.html">Teljes lejátszási előzmény →</a>
+
+  <div class="ns-section-title">Adásidők ezen a héten</div>
+  <div class="ns-week-list" id="ns-week-list"></div>
+
+  <div class="ns-section-title">Kapcsolódó műsorok</div>
+  <div class="ns-related-grid" id="ns-related-grid"></div>
+
+  <div class="ns-section-title">Megosztás</div>
+  <div class="ns-share-row" id="ns-share-row">
+    <a class="ns-share-btn" id="ns-share-fb" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12"/></svg>
+      Facebook
+    </a>
+    <a class="ns-share-btn" id="ns-share-x" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7.2l-5.6-6.9L4 22H1l8.1-9.3L.7 2h7.4l5 6.3L18.9 2Zm-1.3 18h1.8L6.5 4H4.6l13 16Z"/></svg>
+      X
+    </a>
+    <a class="ns-share-btn" id="ns-share-wa" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.9-4.45 9.9-9.91C21.96 6.45 17.5 2 12.04 2Zm5.8 14.02c-.24.68-1.4 1.3-1.93 1.38-.5.08-1.13.11-1.83-.11-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.8-4.17-4.94-4.37-.14-.19-1.18-1.57-1.18-3 0-1.42.75-2.12 1.02-2.41.27-.29.58-.36.78-.36h.55c.18 0 .42-.03.65.5.24.55.8 1.9.87 2.04.07.14.11.3.02.49-.09.19-.14.31-.28.48-.14.16-.29.36-.41.48-.14.14-.28.29-.12.57.16.28.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.22 1.37.28.14.44.12.6-.07.16-.19.7-.81.89-1.09.19-.28.37-.23.63-.14.26.09 1.63.77 1.91.91.28.14.47.21.53.33.07.12.07.68-.17 1.36Z"/></svg>
+      WhatsApp
+    </a>
+    <button type="button" class="ns-share-btn" id="ns-share-copy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Link másolása
+    </button>
+  </div>
+
+</div>
+
+<script src="../slam-footer-reimagined.js"></script>
+
+<script src="../schedule-data.js"></script>
+<script>
+var SHOW_NAME = 'SLAM Non-Stop';
+
+function slugify(str){
+  return (str||'').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+function toMins(t){ var p=t.split(':').map(Number); return p[0]*60+p[1]; }
+function nowMins(){ var n=new Date(); return n.getHours()*60+n.getMinutes(); }
+
+(function(){
+  var jsDay = new Date().getDay();
+  var todayIdx = jsDay === 0 ? 6 : jsDay - 1;
+
+  var matches = [];
+  Object.keys(SHOWS).forEach(function(dayIdx){
+    (SHOWS[dayIdx] || []).forEach(function(entry){
+      if (entry.name === SHOW_NAME) matches.push({ day: Number(dayIdx), entry: entry });
+    });
+  });
+
+  var live = matches.some(function(m){
+    if (m.day !== todayIdx) return false;
+    var now = nowMins(), start = toMins(m.entry.time), end = toMins(m.entry.end);
+    if (end < start) end += 1440;
+    return now >= start && now < end;
+  });
+
+  var badgeRow = document.getElementById('ns-badge-row');
+  badgeRow.innerHTML =
+    (live ? '<span class="ns-live-pill"><span class="dot"></span>Élőben</span>' : '') +
+    '<span class="ns-genre">Music</span>';
+
+  var weekList = document.getElementById('ns-week-list');
+  weekList.innerHTML = matches
+    .sort(function(a,b){ return a.day - b.day; })
+    .map(function(m){
+      return '<div class="ns-week-row">' +
+        '<span class="ns-week-day">' + DAYS_FULL[m.day] + '</span>' +
+        '<span class="ns-week-time">' + m.entry.time + ' – ' + m.entry.end + '</span>' +
+      '</div>';
+    }).join('');
+
+  var relatedGrid = document.getElementById('ns-related-grid');
+  var seen = {};
+  var related = [];
+  [todayIdx, (todayIdx + 1) % 7, (todayIdx + 2) % 7].forEach(function(dayIdx){
+    (SHOWS[dayIdx] || []).forEach(function(entry){
+      if (entry.name === SHOW_NAME || seen[entry.name]) return;
+      seen[entry.name] = true;
+      related.push({ day: dayIdx, entry: entry });
+    });
+  });
+  related = related.slice(0, 4);
+
+  relatedGrid.innerHTML = related.map(function(r){
+    var href = r.entry.url ? r.entry.url : 'musor-reszlet.html?nev=' + slugify(r.entry.name);
+    return '<a class="ns-related-card" href="' + href + '">' +
+      '<div class="ns-related-name">' + r.entry.name + '</div>' +
+      '<div class="ns-related-time">' + r.entry.time + ' – ' + r.entry.end + '</div>' +
+    '</a>';
+  }).join('');
+
+  var pageUrl = window.location.href;
+  document.getElementById('ns-share-fb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl);
+  document.getElementById('ns-share-x').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(pageUrl) + '&text=' + encodeURIComponent(SHOW_NAME + ' — SLAM');
+  document.getElementById('ns-share-wa').href = 'https://wa.me/?text=' + encodeURIComponent(SHOW_NAME + ' — SLAM ' + pageUrl);
+
+  var copyBtn = document.getElementById('ns-share-copy');
+  copyBtn.addEventListener('click', function(){
+    navigator.clipboard.writeText(pageUrl).then(function(){
+      copyBtn.classList.add('copied');
+      copyBtn.lastChild.textContent = ' Link másolva!';
+      setTimeout(function(){
+        copyBtn.classList.remove('copied');
+        copyBtn.lastChild.textContent = ' Link másolása';
+      }, 2000);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
