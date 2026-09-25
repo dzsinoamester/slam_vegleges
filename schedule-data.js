@@ -86,7 +86,7 @@ var SHOWS = {
     {time:'07:00',end:'08:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'08:00',end:'09:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'09:00',end:'10:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
-    {time:'10:00',end:'12:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixmsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
+    {time:'10:00',end:'11:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixmsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'11:00',end:'12:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'12:00',end:'13:00',name:'DJ DARK BY WEEKENDER', dj:'DJ Dark', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'13:00',end:'14:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
