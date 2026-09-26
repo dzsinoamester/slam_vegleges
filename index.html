@@ -1076,8 +1076,7 @@
           ACTIES = 3 × 16:9 kártya (16px köz, 24px sortáv) */
     body.slam-so-lock { overflow: hidden !important; }
     .slam-so {
-      --so-bg: #000000; --so-ink: #fdf9f9; --so-bar: rgb(8, 8, 8); --so-input: #81868d52; --so-visited: #f7f3f3;
-      color: white;
+      --so-bg: #fff; --so-ink: #111; --so-bar: #000; --so-input: #2b2b2b; --so-visited: #999;
       position: fixed; inset: 0; z-index: 100000;
       display: flex; flex-direction: column;
       background: var(--so-bg); color: var(--so-ink);
@@ -1163,7 +1162,7 @@
     .slam-so-art-cat {
       display: block; margin-top: 10px;
       font: 800 12px/16px 'Inter', var(--font-primary, sans-serif);
-      letter-spacing: .02em; text-transform: uppercase; color: var(--slamp-green, #f9fffb);
+      letter-spacing: .02em; text-transform: uppercase; color: var(--slamp-green, #27dc54);
     }
     .slam-so-art-title {
       display: block; margin-top: 6px;
@@ -1835,7 +1834,7 @@
         <h2 class="slam-sl-title"><a href="artikelen/nyaronisslam.html">Hallgasd nyáron is a legnagyobb kedvenceket!</a></h2>
         <p class="slam-sl-desc">Nyáron sem áll meg a zene: hallgasd a SLAM-et, és élvezd a legnagyobb kedvenceket!</p>
       </div>
-      <a class="slam-sl-img" href="artikelen/nyaronisslam.html" tabindex="-1" aria-hidden="true"><img src="img/FEJLÉC-SUMMER.png" alt=""></a>
+      <a class="slam-sl-img" href="artikelen/nyaronisslam.html" tabindex="-1" aria-hidden="true"><img src="img/újabbak a webhez/FEJLÉC-SUMMER.png" alt=""></a>
     </article>
 
     <button type="button" class="slam-sl-arrow slam-sl-prev" aria-label="Előző">
@@ -1998,33 +1997,43 @@
   (function () {
     var root = document.getElementById('slam-slider');
     if (!root) return;
-    var slides = [].slice.call(root.querySelectorAll('.slam-sl-slide'));
     var dotsWrap = root.querySelector('.slam-sl-dots');
     var DELAY = 7000, idx = 0, timer = null, hover = false;
-
-    var dots = slides.map(function (s, i) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.className = 'slam-sl-dot'; b.setAttribute('role', 'tab');
-      b.setAttribute('aria-label', (i + 1) + '. dia');
-      b.addEventListener('click', function () { go(i); restart(); });
-      dotsWrap.appendChild(b);
-      return b;
-    });
+    var slides = [], dots = [];
 
     function go(n) {
+      if (!slides.length) return;
       idx = (n + slides.length) % slides.length;
       slides.forEach(function (s, i) {
         var on = i === idx;
         s.classList.toggle('is-active', on);
         s.setAttribute('aria-hidden', on ? 'false' : 'true');
         if (on) s.removeAttribute('inert'); else s.setAttribute('inert', '');
-        dots[i].setAttribute('aria-selected', on ? 'true' : 'false');
+        if (dots[i]) dots[i].setAttribute('aria-selected', on ? 'true' : 'false');
       });
     }
     function restart() {
       clearInterval(timer);
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       timer = setInterval(function () { if (!hover && !document.hidden) go(idx + 1); }, DELAY);
+    }
+    /* a diák (<article class="slam-sl-slide">) számától és tartalmától
+      függetlenül újraépíthető — ezt hívja meg a JSONBin-betöltő is, miután
+      lecserélte a diákat, hogy a dot-ok/idx/timer szinkronban maradjanak */
+    function rebuild() {
+      slides = [].slice.call(root.querySelectorAll('.slam-sl-slide'));
+      dotsWrap.innerHTML = '';
+      dots = slides.map(function (s, i) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'slam-sl-dot'; b.setAttribute('role', 'tab');
+        b.setAttribute('aria-label', (i + 1) + '. dia');
+        b.addEventListener('click', function () { go(i); restart(); });
+        dotsWrap.appendChild(b);
+        return b;
+      });
+      idx = 0;
+      go(0);
+      restart();
     }
 
     root.querySelector('.slam-sl-prev').addEventListener('click', function () { go(idx - 1); restart(); });
@@ -2058,7 +2067,8 @@
     window.addEventListener('load', fit);
     setTimeout(fit, 300); setTimeout(fit, 1200);
 
-    go(0); restart();
+    rebuild();
+    window.__slamSliderRebuild = rebuild; /* a JSONBin-betöltő ezt hívja meg a diák cseréje után */
   })();
   </script>
 
@@ -3328,7 +3338,16 @@
     function toMins(t){ var p=t.split(':').map(Number); return p[0]*60+p[1]; }
     function nowMins(){ var n=new Date(); return n.getHours()*60+n.getMinutes(); }
 
-    var jsDay=new Date().getDay(), todayIdx=jsDay===0?6:jsDay-1;
+    /* ── dátum szerinti (naptári) műsorrend-lekérdezés ──
+      A schedule-data.js-ben lévő SLAM_SCHEDULE.getShowsFor(dateObj) adja
+      vissza egy adott naptári napra a műsorokat: ha az admin felületen
+      arra a konkrét napra egyedi műsorrendet vittek fel, azt; egyébként
+      a heti sablont (SHOWS[a nap hétköznapja]). Mindig frissen számoljuk
+      ki a "ma"/"holnap" dátumot, hogy éjfél után (ha az oldal nyitva
+      marad) is helyesen váltson. */
+    function todayDate(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
+    function addDays(d,n){ var r=new Date(d); r.setDate(r.getDate()+n); return r; }
+    var todayIdx=(function(){ var jd=new Date().getDay(); return jd===0?6:jd-1; })();
 
     function isLive(s){
       var nm=nowMins(), st=toMins(s.time), en=toMins(s.end);
@@ -3352,18 +3371,17 @@
     function findNextShow(){
       var now=new Date();
       var nowM=now.getHours()*60+now.getMinutes();
-      var list=SHOWS[todayIdx]||[];
+      var list=SLAM_SCHEDULE.getShowsFor(todayDate())||[];
       for(var i=0;i<list.length;i++){
         if(toMins(list[i].time)>nowM) return list[i];
       }
-      var nextIdx=(todayIdx+1)%7;
-      var nextList=SHOWS[nextIdx]||[];
+      var nextList=SLAM_SCHEDULE.getShowsFor(addDays(todayDate(),1))||[];
       return nextList[0]||null;
     }
 
     /* ── élő-sáv hero frissítése (musorrend.html-ről átemelt logika) ── */
     function updateLiveHero(){
-      var todays=SHOWS[todayIdx]||[];
+      var todays=SLAM_SCHEDULE.getShowsFor(todayDate())||[];
       var current=null;
       for(var i=0;i<todays.length;i++){
         if(isLive(todays[i])){ current=todays[i]; break; }
@@ -3520,11 +3538,12 @@
       var track=document.getElementById('slam-prog-track');
       if(!track) return;
 
-      var days=[todayIdx,(todayIdx+1)%7];
+      var dates=[todayDate(),addDays(todayDate(),1)];
       var html='', nm=nowMins();
 
-      days.forEach(function(dayIdx,di){
-        var shows=SHOWS[dayIdx]||[];
+      dates.forEach(function(dayDate,di){
+        var dayIdx=SLAM_SCHEDULE.weekdayIdx(dayDate);
+        var shows=SLAM_SCHEDULE.getShowsFor(dayDate)||[];
         if(di===1){
           html+='<div class="slam-prog-daysep2"><span>'+DAY_HU_SHORT[dayIdx]+'</span></div>';
         }
@@ -3591,10 +3610,15 @@
       nem létezne a kártya, amikor a hero rákeresne. */
     function refreshAll(){ buildProg(); updateLiveHero(); }
 
-    if(document.readyState!=='loading'){refreshAll();}
-    else document.addEventListener('DOMContentLoaded',refreshAll);
+    /* az első kirajzolás megvárja a műsorrend-felülírások (JSONBin)
+      betöltését, hogy ne a heti sablon villanjon fel egy pillanatra egy
+      olyan napon, amire admin felületen egyedi műsorrendet vittek fel */
+    function start(){ SLAM_SCHEDULE.ready.then(refreshAll); }
+    if(document.readyState!=='loading'){start();}
+    else document.addEventListener('DOMContentLoaded',start);
 
-    setInterval(refreshAll,60000);
+    setInterval(refreshAll,60000); /* percenkénti újrarajzolás (élő sáv, "most szól") */
+    setInterval(function(){ SLAM_SCHEDULE.refresh().then(refreshAll); },300000); /* 5 percenként újraolvassuk a felülírásokat is, hogy egy admin-szerkesztés a nyitva hagyott oldalon is megjelenjen */
   })();
   </script>
 
@@ -3754,7 +3778,7 @@
                               class="umbraco-image svelte-1k6vkv6 stretch"
                               alt="SLAM Hidp XXL Header 1920X1080 V1"
                               sizes="(max-width: 700px) 120px, (max-width: 1000px) 50vw, 370px"
-                              src="img/FEJLÉC-SUMMER.png"
+                              src="img/újabbak a webhez/FEJLÉC-SUMMER.png"
                               loading="lazy"></div>
                         </figure>
                         <div class="body svelte-1n3lwzt">
@@ -3860,7 +3884,7 @@
                               class="umbraco-image svelte-1k6vkv6 stretch"
                               alt="SLAM SUMMER HEADER"
                               sizes="(max-width: 700px) 120px, (max-width: 1000px) 50vw, 370px"
-                              src="img/FEJLÉC-SUMMER.png"
+                              src="img/újabbak a webhez/FEJLÉC-SUMMER.png"
                               loading="lazy"></div>
                           <div class="category-tablet-and-larger svelte-1n3lwzt">
                             <div class="badge svelte-19qe02l">AKCIÓINK </div>
@@ -4452,6 +4476,127 @@
     }
     if (document.readyState !== 'loading') watch();
     else document.addEventListener('DOMContentLoaded', watch);
+  })();
+  </script>
+
+  <!-- ══ TRENDING rács + hero-csúszka tartalma az admin.html-ből (JSONBin) ══
+    Az admin felületen felvitt/szerkesztett bejegyzések (ugyanaz a JSONBin,
+    amit az admin.html ír) írják felül induláskor a fent lévő statikus
+    TRENDING kártyákat és hero-csúszka diákat. Ha a betöltés bármi okból
+    (hálózat, üres Bin, hiba) nem sikerül, a statikus, kézzel beírt tartalom
+    marad látható — sosem tűnik el semmi. -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* Ugyanaz a Bin, mint az admin.html-ben — csak olvasunk belőle (GET),
+      nem írunk, ezért ez biztonságos a nyilvános oldalról is. */
+    var BIN_ID = '6ab81713ffd5d160533258e1';
+    var ACCESS_KEY = '$2a$10$tHygSCdawfvQ90N6VE3oZuAZmT54JPXd9r0xcS32v5YPc767U12Pm';
+    var JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID + '/latest';
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function sortByDate(list) {
+      return list.slice().sort(function (a, b) {
+        return String(b.datum || '').localeCompare(String(a.datum || ''));
+      });
+    }
+
+    /* .slam-trending-grid kártya — pontosan a meglévő teaser-jelölés (svelte
+      class-nevek) szerint épül fel, hogy a CSS (hero 2×2 + a mellette lévő
+      2 kártya) változtatás nélkül működjön tovább. */
+    function teaserHtml(p) {
+      var cat = String(p.kategoria || '').trim();
+      var cim = esc(p.cim || '');
+      return (
+        '<a href="' + esc(p.link || '#') + '" class="teaser svelte-1n3lwzt">' +
+          '<figure class="container svelte-1n3lwzt">' +
+            '<div class="image svelte-1n3lwzt">' +
+              (p.kep
+                ? '<img class="umbraco-image svelte-1k6vkv6 stretch" alt="' + cim + '" ' +
+                  'sizes="(max-width: 700px) 120px, (max-width: 1000px) 50vw, 370px" ' +
+                  'src="' + esc(p.kep) + '" loading="lazy">'
+                : '') +
+            '</div>' +
+            (cat ? '<div class="category-tablet-and-larger svelte-1n3lwzt"><div class="badge svelte-19qe02l">' + esc(cat) + '</div></div>' : '') +
+          '</figure>' +
+          '<div class="body svelte-1n3lwzt">' +
+            (cat ? '<div class="category-phone svelte-1n3lwzt">' + esc(cat) + '</div>' : '') +
+            '<h3 class="title svelte-1n3lwzt">' + cim + '</h3>' +
+          '</div>' +
+        '</a>'
+      );
+    }
+
+    /* hero-csúszka dia — a #slam-slider saját JS-e (lásd feljebb) építi újra
+      a pöttyöket/aktív állapotot, ha meghívjuk a window.__slamSliderRebuild()-et. */
+    function slideHtml(p) {
+      return (
+        '<article class="slam-sl-slide" aria-roledescription="slide">' +
+          '<div class="slam-sl-text">' +
+            '<h2 class="slam-sl-title"><a href="' + esc(p.link || '#') + '">' + esc(p.cim || '') + '</a></h2>' +
+            (p.leiras ? '<p class="slam-sl-desc">' + esc(p.leiras) + '</p>' : '') +
+          '</div>' +
+          '<a class="slam-sl-img" href="' + esc(p.link || '#') + '" tabindex="-1" aria-hidden="true">' +
+            (p.kep ? '<img src="' + esc(p.kep) + '" alt="">' : '') +
+          '</a>' +
+        '</article>'
+      );
+    }
+
+    function renderTrending(posts) {
+      var grid = document.querySelector('.slam-trending-grid');
+      if (!grid || !posts.length) return;
+      grid.innerHTML = posts.map(teaserHtml).join('');
+    }
+
+    function renderSlider(posts) {
+      var root = document.getElementById('slam-slider');
+      if (!root || !posts.length) return;
+      var prevBtn = root.querySelector('.slam-sl-prev');
+      if (!prevBtn) return;
+      [].slice.call(root.querySelectorAll('.slam-sl-slide')).forEach(function (s) {
+        s.parentNode.removeChild(s);
+      });
+      var tmp = document.createElement('div');
+      tmp.innerHTML = posts.map(slideHtml).join('');
+      var frag = document.createDocumentFragment();
+      [].slice.call(tmp.children).forEach(function (el) { frag.appendChild(el); });
+      root.insertBefore(frag, prevBtn);
+      if (typeof window.__slamSliderRebuild === 'function') window.__slamSliderRebuild();
+    }
+
+    function apply(posts) {
+      if (!Array.isArray(posts) || !posts.length) return; /* üres/hibás adat esetén marad a statikus tartalom */
+      var sorted = sortByDate(posts);
+      renderTrending(sorted);
+      var kiemelt = sorted.filter(function (p) { return !!p.kiemelt; });
+      renderSlider(kiemelt.length ? kiemelt : sorted);
+    }
+
+    function start() {
+      fetch(JSONBIN_URL, { headers: { 'X-Access-Key': ACCESS_KEY } })
+        .then(function (r) {
+          if (!r.ok) throw new Error('JSONBin GET ' + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          var record = data && data.record;
+          var posts = Array.isArray(record) ? record : (record && Array.isArray(record.posts) ? record.posts : []);
+          apply(posts);
+        })
+        .catch(function (err) {
+          console.error('SLAM: nem sikerült a bejegyzéseket betölteni a JSONBinből, a statikus tartalom marad látható.', err);
+        });
+    }
+
+    if (document.readyState !== 'loading') start();
+    else document.addEventListener('DOMContentLoaded', start);
   })();
   </script>
   </body>

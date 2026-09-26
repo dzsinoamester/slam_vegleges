@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SLAM Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<style>
+  :root {
+    --slamp-green: #27dc54;
+    --grad-green: linear-gradient(90deg, #097b46 0%, #11e281 100%);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: #000;
+    color: #fff;
+    font: 400 15px/1.5 'Inter', sans-serif;
+  }
+  a { color: inherit; }
+  [hidden] { display: none !important; }
+
+  /* ---------- BEJELENTKEZÉS ---------- */
+  .login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    width: 100%; max-width: 400px;
+    background: rgba(16, 20, 44, .82);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 22px;
+    padding: 38px 32px 34px;
+    box-shadow:
+      0 30px 60px -20px rgba(0, 0, 0, .55),
+      0 25px 46px -18px rgba(0, 55, 28, .5),
+      inset 0 1px 1px rgba(255, 255, 255, .07);
+  }
+  .login-eyebrow {
+    margin: 0 0 6px; font: 800 12px/1 'Inter', sans-serif;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--slamp-green);
+  }
+  .login-title {
+    margin: 0 0 26px; font: 900 26px/1.15 'Inter', sans-serif;
+    letter-spacing: -.02em; text-transform: uppercase; color: #fff;
+  }
+  .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+  .field span {
+    font: 900 12px/1 'Inter', sans-serif;
+    letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .65);
+  }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 0 16px; height: 48px; border-radius: 12px;
+    background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .14);
+    color: #fff; font: 500 15px/1 'Inter', sans-serif;
+    outline: 0; -webkit-appearance: none; appearance: none;
+    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+  }
+  .field textarea { height: auto; padding: 12px 16px; min-height: 90px; resize: vertical; font-family: 'Inter', sans-serif; }
+  .field input::placeholder, .field textarea::placeholder { color: rgba(255, 255, 255, .34); }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--slamp-green); background: rgba(255, 255, 255, .08);
+    box-shadow: 0 0 0 3px rgba(39, 220, 84, .18);
+  }
+  .field-check { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .field-check input { width: 18px; height: 18px; accent-color: var(--slamp-green); }
+  .field-check span { font: 700 13px/1 'Inter', sans-serif; color: rgba(255, 255, 255, .8); text-transform: none; letter-spacing: 0; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 48px; padding: 0 24px; border: 0; border-radius: 999px; cursor: pointer;
+    font: 700 14px/1 'Inter', sans-serif; letter-spacing: .01em; text-transform: uppercase;
+    transition: filter .2s ease, transform .15s ease, box-shadow .2s ease;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary {
+    width: 100%; color: #fff; background: var(--grad-green);
+    box-shadow: 0 14px 28px -12px rgba(17, 226, 129, .55);
+  }
+  .btn-primary:hover { filter: brightness(1.07); }
+  .btn-ghost {
+    background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14); color: #fff;
+  }
+  .btn-ghost:hover { background: rgba(255, 255, 255, .12); }
+  .btn-danger {
+    background: rgba(255, 70, 70, .12); border: 1px solid rgba(255, 70, 70, .35); color: #ff8a8a;
+  }
+  .btn-danger:hover { background: rgba(255, 70, 70, .2); }
+  .btn-sm { height: 36px; padding: 0 16px; font-size: 12px; }
+
+  .login-error {
+    margin: -6px 0 16px; padding: 10px 14px; border-radius: 10px;
+    background: rgba(255, 70, 70, .12); border: 1px solid rgba(255, 70, 70, .35);
+    color: #ff8a8a; font: 700 13px/1.4 'Inter', sans-serif;
+  }
+
+  /* ---------- ADMIN FELÜLET ---------- */
+  .admin-screen { min-height: 100vh; }
+  .admin-bar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; padding: 0 24px;
+    background: rgba(0, 0, 0, .75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+  }
+  .admin-logo { font: 900 17px/1 'Inter', sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .admin-logo span { color: var(--slamp-green); }
+  .admin-main { max-width: 980px; margin: 0 auto; padding: 32px 24px 80px; }
+  .admin-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .admin-head h1 {
+    margin: 0; font: 900 22px/1.15 'Inter', sans-serif; letter-spacing: -.02em; text-transform: uppercase;
+  }
+  .admin-status { font: 600 13px/1 'Inter', sans-serif; color: rgba(255, 255, 255, .5); }
+  .admin-status.is-error { color: #ff8a8a; }
+  .admin-status.is-ok { color: var(--slamp-green); }
+
+  .import-box {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    background: rgba(2, 96, 240, .1); border: 1px solid rgba(2, 96, 240, .3);
+    border-radius: 16px; padding: 14px 18px; margin-bottom: 24px;
+  }
+  .import-title { margin: 0 0 2px; font: 800 13px/1.3 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+  .import-desc { margin: 0; font: 500 12px/1.4 'Inter', sans-serif; color: rgba(255, 255, 255, .55); }
+  @media (max-width: 560px) { .import-box { flex-direction: column; align-items: flex-start; } }
+
+  /* --- form panel --- */
+  .post-form {
+    background: rgba(16, 20, 44, .82);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 20px;
+    padding: 26px 26px 24px;
+    margin-bottom: 32px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .55);
+  }
+  .post-form h2 {
+    margin: 0 0 18px; font: 800 16px/1 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .02em;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+  .form-grid .field-full { grid-column: 1 / -1; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+  .thumb-preview {
+    width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden;
+    background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12);
+    display: flex; align-items: center; justify-content: center; margin-top: 8px;
+  }
+  .thumb-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb-preview span { font: 600 12px/1 'Inter', sans-serif; color: rgba(255, 255, 255, .35); }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* --- post list --- */
+  .post-list { display: flex; flex-direction: column; gap: 12px; }
+  .post-row {
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(16, 20, 44, .55);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 16px; padding: 12px 16px;
+  }
+  .post-row-thumb {
+    flex: none; width: 84px; height: 56px; border-radius: 10px; overflow: hidden;
+    background: rgba(255, 255, 255, .06);
+  }
+  .post-row-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .post-row-body { flex: 1; min-width: 0; }
+  .post-row-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .post-cat {
+    font: 800 11px/1 'Inter', sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--slamp-green);
+  }
+  .post-date { font: 600 11px/1 'Inter', sans-serif; color: rgba(255, 255, 255, .4); }
+  .post-hero-badge {
+    font: 800 10px/1 'Inter', sans-serif; letter-spacing: .04em; text-transform: uppercase;
+    color: #06210f; background: var(--slamp-green); padding: 3px 8px; border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  }
+  .post-row-title {
+    margin: 0; font: 800 15px/1.3 'Inter', sans-serif; color: #fff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .post-row-actions { flex: none; display: flex; gap: 8px; }
+  .post-empty {
+    padding: 48px 0; text-align: center; color: rgba(255, 255, 255, .4);
+    font: 700 13px/1.4 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .02em;
+  }
+
+  /* --- tabok (Bejegyzések / Műsorrend) --- */
+  .admin-tabs { display: flex; gap: 8px; margin-bottom: 22px; }
+  .admin-tab {
+    height: 40px; padding: 0 20px; border-radius: 999px; cursor: pointer;
+    background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .7);
+    font: 800 12px/1 'Inter', sans-serif; letter-spacing: .04em; text-transform: uppercase;
+    transition: background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .admin-tab:hover { background: rgba(255, 255, 255, .09); }
+  .admin-tab.is-active { background: var(--grad-green); border-color: transparent; color: #06210f; }
+
+  /* --- műsorrend szerkesztő --- */
+  .sched-intro { margin: 0 0 18px; font: 500 13px/1.5 'Inter', sans-serif; color: rgba(255, 255, 255, .55); }
+  .sched-row {
+    background: rgba(16, 20, 44, .55); border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 16px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .sched-row-grid { display: grid; grid-template-columns: 96px 96px 1fr 1fr 90px 1fr; gap: 10px 12px; }
+  .sched-row-grid .field-full { grid-column: 1 / -1; }
+  .sched-row-grid .field span { font-size: 10px; }
+  .sched-row-grid .field input, .sched-row-grid .field textarea { height: 40px; font-size: 13px; padding: 0 12px; }
+  .sched-row-grid .field textarea { height: auto; min-height: 60px; padding: 8px 12px; }
+  .sched-row-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+  @media (max-width: 760px) { .sched-row-grid { grid-template-columns: 1fr 1fr; } }
+  .sched-override-meta { font: 600 12px/1 'Inter', sans-serif; color: rgba(255, 255, 255, .45); }
+</style>
+</head>
+<body>
+
+  <!-- ============ BEJELENTKEZÉS ============ -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <p class="login-eyebrow">SLAM</p>
+      <h1 class="login-title">Admin belépés</h1>
+      <div class="login-error" id="loginError" hidden></div>
+      <form id="loginForm" autocomplete="off">
+        <label class="field">
+          <span>Felhasználónév</span>
+          <input type="text" id="loginUser" autocomplete="username" required>
+        </label>
+        <label class="field">
+          <span>Jelszó</span>
+          <input type="password" id="loginPass" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="btn btn-primary">Belépés</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ ADMIN FELÜLET ============ -->
+  <div class="admin-screen" id="adminScreen" hidden>
+    <div class="admin-bar">
+      <div class="admin-logo">SLAM <span>ADMIN</span></div>
+      <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">Kijelentkezés</button>
+    </div>
+
+    <div class="admin-main">
+      <div class="admin-tabs">
+        <button type="button" class="admin-tab is-active" data-tab="posts">Bejegyzések</button>
+        <button type="button" class="admin-tab" data-tab="schedule">Műsorrend</button>
+      </div>
+
+      <div class="admin-tab-panel" id="tabPosts">
+      <div class="admin-head">
+        <h1>Bejegyzések</h1>
+        <span class="admin-status" id="statusText">Betöltés…</span>
+      </div>
+
+      <div class="import-box" id="importBox">
+        <div>
+          <p class="import-title">Meglévő cikkek importálása</p>
+          <p class="import-desc">A jelenlegi index.html 6 cikke (TRENDING rács + hero-csúszka) — csak egyszer kell megnyomni.</p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="importBtn">Importálás</button>
+      </div>
+
+      <!-- form: új / szerkesztés -->
+      <form class="post-form" id="postForm">
+        <h2 id="formTitle">Új bejegyzés</h2>
+        <input type="hidden" id="postId">
+        <div class="form-grid">
+          <label class="field field-full">
+            <span>Cím</span>
+            <input type="text" id="postCim" placeholder="pl. Lost Frequencies és a The Chainsmokers is alkotott neked egy újabb zenét" required>
+          </label>
+
+          <label class="field">
+            <span>Kategória</span>
+            <input type="text" id="postKategoria" placeholder="pl. Music" required>
+          </label>
+          <label class="field">
+            <span>Dátum</span>
+            <input type="date" id="postDatum" required>
+          </label>
+
+          <label class="field field-full">
+            <span>Rövid leírás</span>
+            <textarea id="postLeiras" placeholder="1–2 mondat, ami a kártyán / a cikk elején jelenik meg"></textarea>
+          </label>
+
+          <label class="field field-full">
+            <span>Kép URL</span>
+            <input type="url" id="postKep" placeholder="https://…" required>
+            <div class="thumb-preview" id="thumbPreview"><span>Nincs kép</span></div>
+          </label>
+
+          <label class="field field-full">
+            <span>Link (hova mutasson a kártya)</span>
+            <input type="url" id="postLink" placeholder="https://slamradio.rf.gd/…">
+          </label>
+
+          <label class="field-check field-full">
+            <input type="checkbox" id="postKiemelt">
+            <span>Kiemelt / hero bejegyzés</span>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="cancelEditBtn" hidden>Mégse</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn" style="width:auto; padding:0 28px;">Mentés</button>
+        </div>
+      </form>
+
+      <!-- lista -->
+      <div class="post-list" id="postList"></div>
+      <p class="post-empty" id="postEmpty" hidden>Még nincs egy bejegyzés sem.</p>
+      </div>
+
+      <div class="admin-tab-panel" id="tabSchedule" hidden>
+        <div class="admin-head">
+          <h1>Műsorrend</h1>
+          <span class="admin-status" id="schedStatusText"></span>
+        </div>
+        <p class="sched-intro">
+          A schedule-data.js fájlban lévő heti sablon (hétfő–vasárnap, ismétlődő) marad az
+          alapértelmezett minden napra. Itt egy KONKRÉT NAPTÁRI NAPRA (akár messze előre is)
+          vihetsz fel ettől eltérő műsorrendet — ez csak azt az egy napot írja felül, a heti
+          sablon és a többi nap változatlan marad.
+        </p>
+
+        <form class="post-form" id="schedForm" onsubmit="return false;">
+          <h2>Nap szerkesztése</h2>
+          <div class="form-grid">
+            <label class="field">
+              <span>Dátum</span>
+              <input type="date" id="schedDate">
+            </label>
+            <div style="display:flex; align-items:flex-end; padding-bottom:2px;">
+              <span class="sched-override-meta" id="schedDateMeta"></span>
+            </div>
+          </div>
+
+          <div id="schedRowsWrap" style="margin-top:16px;"></div>
+
+          <div class="form-actions" style="justify-content:flex-start;">
+            <button type="button" class="btn btn-ghost btn-sm" id="schedAddRow">+ Új sáv</button>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-ghost" id="schedResetBtn">Alapértelmezettre állítás</button>
+            <button type="button" class="btn btn-primary" id="schedSaveBtn" style="width:auto; padding:0 28px;">Mentés erre a napra</button>
+          </div>
+        </form>
+
+        <div class="post-form">
+          <h2>Rögzített egyedi napok</h2>
+          <div class="post-list" id="schedOverrideList"></div>
+          <p class="post-empty" id="schedOverrideEmpty" hidden>Még nincs egyedi nap rögzítve — minden nap a heti sablon szerint megy.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- a heti alap-sablonhoz (SHOWS, DAYS_FULL) — csak olvasásra használjuk itt,
+  a SLAM_SCHEDULE benne lévő JSONBin-lekérdezését az admin nem használja,
+  mert a lenti admin-script a saját (posts+schedule együtt) betöltését végzi -->
+<script src="schedule-data.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- BEÁLLÍTÁSOK ----------------
+    FIGYELEM: ez egy statikus, szerver nélküli admin oldal — a jelszó és a
+    JSONBin kulcs is a kliens-oldali kódban van, tehát bárki, aki megnézi a
+    forráskódot / a hálózati kéréseket, hozzáférhet. Ez egy személyes
+    admin-eszközhöz elég, de NEM helyettesít egy valódi backendes
+    jogosultság-kezelést. Ne tegyél ide semmi olyat, aminek a kiszivárgása
+    komoly gondot okozna. */
+  var ADMIN_USER = 'slamradiohu_admin';
+  var ADMIN_PASS = 'RadioSLAM2024@';
+  var BIN_ID = '6ab81713ffd5d160533258e1';
+  var ACCESS_KEY = '$2a$10$tHygSCdawfvQ90N6VE3oZuAZmT54JPXd9r0xcS32v5YPc767U12Pm';
+  var JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
+  var SESSION_KEY = 'slamAdminSession';
+
+  /* ---------------- ELEMEK ---------------- */
+  var loginScreen = document.getElementById('loginScreen');
+  var adminScreen = document.getElementById('adminScreen');
+  var loginForm = document.getElementById('loginForm');
+  var loginError = document.getElementById('loginError');
+  var logoutBtn = document.getElementById('logoutBtn');
+  var statusText = document.getElementById('statusText');
+
+  var postForm = document.getElementById('postForm');
+  var formTitle = document.getElementById('formTitle');
+  var postIdEl = document.getElementById('postId');
+  var postCim = document.getElementById('postCim');
+  var postKategoria = document.getElementById('postKategoria');
+  var postDatum = document.getElementById('postDatum');
+  var postLeiras = document.getElementById('postLeiras');
+  var postKep = document.getElementById('postKep');
+  var postLink = document.getElementById('postLink');
+  var postKiemelt = document.getElementById('postKiemelt');
+  var thumbPreview = document.getElementById('thumbPreview');
+  var cancelEditBtn = document.getElementById('cancelEditBtn');
+
+  var postList = document.getElementById('postList');
+  var postEmpty = document.getElementById('postEmpty');
+
+  var tabButtons = document.querySelectorAll('.admin-tab');
+  var tabPosts = document.getElementById('tabPosts');
+  var tabSchedule = document.getElementById('tabSchedule');
+  var schedStatusText = document.getElementById('schedStatusText');
+
+  var schedDate = document.getElementById('schedDate');
+  var schedDateMeta = document.getElementById('schedDateMeta');
+  var schedRowsWrap = document.getElementById('schedRowsWrap');
+  var schedAddRow = document.getElementById('schedAddRow');
+  var schedResetBtn = document.getElementById('schedResetBtn');
+  var schedSaveBtn = document.getElementById('schedSaveBtn');
+  var schedOverrideList = document.getElementById('schedOverrideList');
+  var schedOverrideEmpty = document.getElementById('schedOverrideEmpty');
+
+  var posts = [];
+  var scheduleOverrides = {}; /* 'ÉÉÉÉ-HH-NN' -> [ {time,end,name,dj,initial,url,photo,desc,genre}, ... ] */
+
+  /* ---------------- MEGLÉVŐ CIKKEK (a jelenlegi index.html-ből) ----------------
+    Az adatok a TRENDING rács és a hero-csúszka (.slam-sl-slide) valódi
+    cím/kép/link/leírás mezőiből származnak — nem kitalált tartalom. A dátumot
+    csak ott tudtam kiolvasni, ahol a fájlnévben szerepelt (pl. -20250822);
+    a többinél üresen hagytam, azokat érdemes utólag pontosítani. */
+  var SEED_POSTS = [
+    {
+      link: 'artikelen/hetifrissmegjelenések-20250822.html',
+      kep: 'img/newmusicupdatexdance-20250822-banner.png',
+      kategoria: 'MUSIC',
+      cim: 'Ezen a héten is hallhatsz friss, ropogós frissességeket!',
+      leiras: 'Ismerd meg a hét legfrissebb megjelenéseit! Kapcsold be a SLAM-et, és hallgasd az új zenéket elsőként.',
+      datum: '2025-08-22',
+      kiemelt: true
+    },
+    {
+      link: 'artikelen/welovemusic-spotify.html',
+      kep: 'img/welovemusic-spotify-header.png',
+      kategoria: 'MUSIC',
+      cim: 'Hallgasd a legjobb SLAM-es kedvenceket a Spotifyon is!',
+      leiras: 'Kövesd a SLAM-es kedvenceket a Spotifyon is, és vidd magaddal a legjobb zenéket bárhová, ahová csak mész.',
+      datum: '',
+      kiemelt: true
+    },
+    {
+      link: 'artikelen/hetikedvencek-20250815.html',
+      kep: 'img/newmusicupdatexdance-20250815-banner.png',
+      kategoria: 'MUSIC',
+      cim: 'Lost Frequencies és a The Chainsmokers is alkotott neked egy újabb zenét ezen a héten!',
+      leiras: 'Lost Frequencies és a The Chainsmokers is új zenével jelentkezett ezen a héten. Nézd meg, mi került a heti kedvencek közé!',
+      datum: '2025-08-15',
+      kiemelt: true
+    },
+    {
+      link: 'artikelen/ujabbkedvencek-20250808.html',
+      kep: 'img/newmusicupdate-20250808-banner.png',
+      kategoria: 'MUSIC',
+      cim: 'Mau P és Armin van Buuren újabb slágerekkel jöttek neked!',
+      leiras: 'Mau P és Armin van Buuren is friss slágerekkel érkezett. Olvasd el, mi az, ami most a legjobban szól!',
+      datum: '2025-08-08',
+      kiemelt: false
+    },
+    {
+      link: 'artikelen/slamsummer101-2025.html',
+      kep: 'img/summer101.png',
+      kategoria: '',
+      cim: 'Ez volt a SLAM SUMMER 101!',
+      leiras: 'Nézz vissza a SLAM SUMMER 101 legjobb pillanataira!',
+      datum: '',
+      kiemelt: false
+    },
+    {
+      link: 'artikelen/nyaronisslam.html',
+      kep: 'img/újabbak a webhez/FEJLÉC-SUMMER.png',
+      kategoria: '',
+      cim: 'Hallgasd nyáron is a legnagyobb kedvenceket!',
+      leiras: 'Nyáron sem áll meg a zene: hallgasd a SLAM-et, és élvezd a legnagyobb kedvenceket!',
+      datum: '',
+      kiemelt: false
+    }
+  ];
+
+  /* ---------------- BEJELENTKEZÉS ---------------- */
+  function showAdmin() {
+    loginScreen.hidden = true;
+    adminScreen.hidden = false;
+    loadAll();
+  }
+  function showLogin() {
+    adminScreen.hidden = true;
+    loginScreen.hidden = false;
+  }
+
+  if (sessionStorage.getItem(SESSION_KEY) === '1') showAdmin();
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = document.getElementById('loginUser').value.trim();
+    var p = document.getElementById('loginPass').value;
+    if (u === ADMIN_USER && p === ADMIN_PASS) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      loginError.hidden = true;
+      loginForm.reset();
+      showAdmin();
+    } else {
+      loginError.textContent = 'Hibás felhasználónév vagy jelszó.';
+      loginError.hidden = false;
+    }
+  });
+
+  logoutBtn.addEventListener('click', function () {
+    sessionStorage.removeItem(SESSION_KEY);
+    showLogin();
+  });
+
+  /* ---------------- JSONBIN ----------------
+    Egyetlen Bin-ben tároljuk a bejegyzéseket ÉS a műsorrend-felülírásokat is,
+    egy közös rekordban: { posts: [...], schedule: { overrides: {...} } }.
+    Ezért MINDIG a teljes rekordot olvassuk be, és MINDIG a teljes (mindkét
+    részt tartalmazó) rekordot írjuk vissza — így a bejegyzések mentése nem
+    írja felül/törli a műsorrend-felülírásokat, és fordítva sem. */
+  function jsonbinGetRecord() {
+    return fetch(JSONBIN_BASE + '/latest', {
+      headers: { 'X-Access-Key': ACCESS_KEY }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('JSONBin GET ' + r.status);
+      return r.json();
+    }).then(function (data) {
+      return (data && data.record) || {};
+    });
+  }
+
+  function jsonbinPutRecord(record) {
+    return fetch(JSONBIN_BASE, {
+      method: 'PUT',
+      headers: { 'X-Access-Key': ACCESS_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    }).then(function (r) {
+      if (!r.ok) throw new Error('JSONBin PUT ' + r.status);
+      return r.json();
+    });
+  }
+
+  function currentRecord() {
+    return { posts: posts, schedule: { overrides: scheduleOverrides } };
+  }
+
+  function setStatus(text, kind) {
+    statusText.textContent = text;
+    statusText.className = 'admin-status' + (kind ? ' is-' + kind : '');
+    if (schedStatusText) {
+      schedStatusText.textContent = text;
+      schedStatusText.className = 'admin-status' + (kind ? ' is-' + kind : '');
+    }
+  }
+
+  function loadAll() {
+    setStatus('Betöltés…');
+    return jsonbinGetRecord().then(function (record) {
+      posts = Array.isArray(record) ? record : (Array.isArray(record.posts) ? record.posts : []);
+      scheduleOverrides = (record && record.schedule && record.schedule.overrides && typeof record.schedule.overrides === 'object')
+        ? record.schedule.overrides : {};
+      renderList();
+      renderSchedOverrideList();
+      setStatus('Betöltve — ' + posts.length + ' bejegyzés', 'ok');
+    }).catch(function (err) {
+      console.error(err);
+      setStatus('Nem sikerült betölteni az adatokat. Ellenőrizd a Bin ID-t / kulcsot.', 'error');
+    });
+  }
+
+  function saveAll(successMsg) {
+    setStatus('Mentés…');
+    return jsonbinPutRecord(currentRecord()).then(function () {
+      setStatus(successMsg || ('Mentve — ' + posts.length + ' bejegyzés'), 'ok');
+    }).catch(function (err) {
+      console.error(err);
+      setStatus('Mentés sikertelen. Próbáld újra.', 'error');
+      throw err;
+    });
+  }
+
+  /* ---------------- LISTA MEGJELENÍTÉS ---------------- */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtDate(d) {
+    if (!d) return '';
+    var parts = String(d).split('-');
+    return parts.length === 3 ? parts[2] + '.' + parts[1] + '.' + parts[0] + '.' : d;
+  }
+
+  function renderList() {
+    var sorted = posts.slice().sort(function (a, b) {
+      return String(b.datum || '').localeCompare(String(a.datum || ''));
+    });
+    postList.innerHTML = '';
+    postEmpty.hidden = sorted.length !== 0;
+    sorted.forEach(function (p) {
+      var row = document.createElement('div');
+      row.className = 'post-row';
+      row.innerHTML =
+        '<div class="post-row-thumb">' + (p.kep ? '<img src="' + esc(p.kep) + '" alt="">' : '') + '</div>' +
+        '<div class="post-row-body">' +
+          '<div class="post-row-meta">' +
+            '<span class="post-cat">' + esc(p.kategoria || '') + '</span>' +
+            '<span class="post-date">' + esc(fmtDate(p.datum)) + '</span>' +
+            (p.kiemelt ? '<span class="post-hero-badge">Kiemelt</span>' : '') +
+          '</div>' +
+          '<p class="post-row-title">' + esc(p.cim || '') + '</p>' +
+        '</div>' +
+        '<div class="post-row-actions">' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-edit="' + esc(p.id) + '">Szerkesztés</button>' +
+          '<button type="button" class="btn btn-danger btn-sm" data-del="' + esc(p.id) + '">Törlés</button>' +
+        '</div>';
+      postList.appendChild(row);
+    });
+  }
+
+  postList.addEventListener('click', function (e) {
+    var editId = e.target.getAttribute('data-edit');
+    var delId = e.target.getAttribute('data-del');
+    if (editId) {
+      var p = posts.filter(function (x) { return String(x.id) === editId; })[0];
+      if (p) startEdit(p);
+    } else if (delId) {
+      if (!confirm('Biztosan törlöd ezt a bejegyzést?')) return;
+      posts = posts.filter(function (x) { return String(x.id) !== delId; });
+      renderList();
+      saveAll();
+    }
+  });
+
+  /* ---------------- FORM ---------------- */
+  function resetForm() {
+    postForm.reset();
+    postIdEl.value = '';
+    formTitle.textContent = 'Új bejegyzés';
+    cancelEditBtn.hidden = true;
+    thumbPreview.innerHTML = '<span>Nincs kép</span>';
+  }
+
+  function startEdit(p) {
+    postIdEl.value = p.id;
+    postCim.value = p.cim || '';
+    postKategoria.value = p.kategoria || '';
+    postDatum.value = p.datum || '';
+    postLeiras.value = p.leiras || '';
+    postKep.value = p.kep || '';
+    postLink.value = p.link || '';
+    postKiemelt.checked = !!p.kiemelt;
+    formTitle.textContent = 'Bejegyzés szerkesztése';
+    cancelEditBtn.hidden = false;
+    updateThumb();
+    postForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  cancelEditBtn.addEventListener('click', resetForm);
+
+  function updateThumb() {
+    var url = postKep.value.trim();
+    thumbPreview.innerHTML = url
+      ? '<img src="' + esc(url) + '" alt="" onerror="this.parentNode.innerHTML=\'<span>Nem sikerült betölteni a képet</span>\'">'
+      : '<span>Nincs kép</span>';
+  }
+  postKep.addEventListener('input', updateThumb);
+  postKep.addEventListener('blur', updateThumb);
+
+  postForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var id = postIdEl.value || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    var data = {
+      id: id,
+      cim: postCim.value.trim(),
+      kategoria: postKategoria.value.trim(),
+      datum: postDatum.value,
+      leiras: postLeiras.value.trim(),
+      kep: postKep.value.trim(),
+      link: postLink.value.trim(),
+      kiemelt: postKiemelt.checked
+    };
+    var existingIdx = posts.findIndex(function (x) { return String(x.id) === String(id); });
+    if (existingIdx > -1) posts[existingIdx] = data; else posts.push(data);
+    renderList();
+    resetForm();
+    saveAll();
+  });
+
+  resetForm();
+
+  /* ---------------- IMPORT ---------------- */
+  document.getElementById('importBtn').addEventListener('click', function () {
+    var added = 0;
+    SEED_POSTS.forEach(function (seed) {
+      var exists = posts.some(function (p) { return p.link === seed.link; });
+      if (exists) return;
+      var copy = {};
+      for (var k in seed) copy[k] = seed[k];
+      copy.id = 'seed-' + btoa(unescape(encodeURIComponent(seed.link))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
+      posts.push(copy);
+      added++;
+    });
+    if (added === 0) {
+      setStatus('Nincs új importálandó cikk (mind megvan már).', 'ok');
+      return;
+    }
+    renderList();
+    saveAll('Importálva ' + added + ' cikk — összesen ' + posts.length);
+  });
+
+  /* ---------------- TABOK ---------------- */
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabButtons.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+      var isSched = btn.getAttribute('data-tab') === 'schedule';
+      tabPosts.hidden = isSched;
+      tabSchedule.hidden = !isSched;
+    });
+  });
+
+  /* ---------------- MŰSORREND (dátum szerinti felülírás) ---------------- */
+  function schedWeekdayIdx(dateStr) {
+    var d = new Date(dateStr + 'T00:00:00');
+    var jd = d.getDay();
+    return jd === 0 ? 6 : jd - 1;
+  }
+
+  function fmtSchedDate(d) {
+    var parts = String(d).split('-');
+    return parts.length === 3 ? parts[2] + '.' + parts[1] + '.' + parts[0] + '.' : d;
+  }
+
+  function schedRowHtml(row) {
+    row = row || {};
+    return (
+      '<div class="sched-row" data-row="1">' +
+        '<div class="sched-row-grid">' +
+          '<label class="field"><span>Kezdés</span><input type="time" class="sf-time" value="' + esc(row.time || '') + '"></label>' +
+          '<label class="field"><span>Vége</span><input type="time" class="sf-end" value="' + esc(row.end || '') + '"></label>' +
+          '<label class="field"><span>Műsor neve</span><input type="text" class="sf-name" value="' + esc(row.name || '') + '"></label>' +
+          '<label class="field"><span>DJ</span><input type="text" class="sf-dj" value="' + esc(row.dj || '') + '"></label>' +
+          '<label class="field"><span>Rövidítés</span><input type="text" class="sf-initial" value="' + esc(row.initial || '') + '"></label>' +
+          '<label class="field"><span>Link (opcionális)</span><input type="text" class="sf-url" value="' + esc(row.url || '') + '"></label>' +
+          '<label class="field field-full"><span>Fotó URL (opcionális)</span><input type="text" class="sf-photo" value="' + esc(row.photo || '') + '"></label>' +
+          '<label class="field field-full"><span>Leírás</span><textarea class="sf-desc">' + esc(row.desc || '') + '</textarea></label>' +
+        '</div>' +
+        '<div class="sched-row-actions"><button type="button" class="btn btn-danger btn-sm" data-sched-del-row="1">Sáv törlése</button></div>' +
+      '</div>'
+    );
+  }
+
+  function renderSchedRows(rows) {
+    schedRowsWrap.innerHTML = (rows || []).map(schedRowHtml).join('');
+  }
+
+  function readSchedRows() {
+    var out = [];
+    [].slice.call(schedRowsWrap.querySelectorAll('[data-row]')).forEach(function (el) {
+      var time = el.querySelector('.sf-time').value;
+      var end = el.querySelector('.sf-end').value;
+      var name = el.querySelector('.sf-name').value.trim();
+      if (!time || !end || !name) return; /* hiányos sáv (nincs kezdés/vég/név) — kihagyjuk mentéskor */
+      out.push({
+        time: time,
+        end: end,
+        name: name,
+        dj: el.querySelector('.sf-dj').value.trim(),
+        initial: el.querySelector('.sf-initial').value.trim(),
+        url: el.querySelector('.sf-url').value.trim(),
+        photo: el.querySelector('.sf-photo').value.trim(),
+        desc: el.querySelector('.sf-desc').value.trim(),
+        genre: 'Music'
+      });
+    });
+    out.sort(function (a, b) { return a.time.localeCompare(b.time); });
+    return out;
+  }
+
+  function loadDefaultForDate(dateStr) {
+    var wd = schedWeekdayIdx(dateStr);
+    var defaults = (typeof SHOWS !== 'undefined' && SHOWS[wd]) ? SHOWS[wd] : [];
+    renderSchedRows(defaults);
+    schedDateMeta.textContent = 'Heti alap-sablon (' + ((typeof DAYS_FULL !== 'undefined' && DAYS_FULL[wd]) || '') + ') — még nincs egyedi felülírás erre a napra.';
+  }
+
+  function loadDateIntoEditor(dateStr) {
+    if (!dateStr) { schedRowsWrap.innerHTML = ''; schedDateMeta.textContent = ''; return; }
+    if (Object.prototype.hasOwnProperty.call(scheduleOverrides, dateStr)) {
+      renderSchedRows(scheduleOverrides[dateStr]);
+      schedDateMeta.textContent = 'Egyedi műsorrend van felvíve erre a napra.';
+    } else {
+      loadDefaultForDate(dateStr);
+    }
+  }
+
+  schedDate.addEventListener('change', function () { loadDateIntoEditor(schedDate.value); });
+
+  schedAddRow.addEventListener('click', function () {
+    var rows = readSchedRows();
+    rows.push({ time: '', end: '', name: '', dj: '', initial: '', url: '', photo: '', desc: '' });
+    renderSchedRows(rows);
+  });
+
+  schedRowsWrap.addEventListener('click', function (e) {
+    if (!e.target.hasAttribute('data-sched-del-row')) return;
+    var row = e.target.closest('[data-row]');
+    if (row) row.parentNode.removeChild(row);
+  });
+
+  schedResetBtn.addEventListener('click', function () {
+    var dateStr = schedDate.value;
+    if (!dateStr) { setStatus('Válassz előbb dátumot.', 'error'); return; }
+    if (!Object.prototype.hasOwnProperty.call(scheduleOverrides, dateStr)) {
+      loadDefaultForDate(dateStr);
+      return;
+    }
+    if (!confirm('Biztosan törlöd az egyedi műsorrendet erre a napra (' + fmtSchedDate(dateStr) + ')? Visszaáll a heti alap-sablon.')) return;
+    delete scheduleOverrides[dateStr];
+    renderSchedOverrideList();
+    loadDefaultForDate(dateStr);
+    saveAll('Visszaállítva az alap-műsorrendre — ' + fmtSchedDate(dateStr));
+  });
+
+  schedSaveBtn.addEventListener('click', function () {
+    var dateStr = schedDate.value;
+    if (!dateStr) { setStatus('Válassz előbb dátumot.', 'error'); return; }
+    var rows = readSchedRows();
+    if (!rows.length) { setStatus('Legalább egy érvényes (kezdés + vég + név) sáv kell a mentéshez.', 'error'); return; }
+    scheduleOverrides[dateStr] = rows;
+    renderSchedRows(rows); /* rendezve, hiányos sorok nélkül jelenjen meg */
+    schedDateMeta.textContent = 'Egyedi műsorrend van felvíve erre a napra.';
+    renderSchedOverrideList();
+    saveAll('Elmentve — ' + fmtSchedDate(dateStr) + ' egyedi műsorrendje');
+  });
+
+  function renderSchedOverrideList() {
+    var keys = Object.keys(scheduleOverrides).sort();
+    schedOverrideList.innerHTML = '';
+    schedOverrideEmpty.hidden = keys.length !== 0;
+    keys.forEach(function (k) {
+      var row = document.createElement('div');
+      row.className = 'post-row';
+      row.innerHTML =
+        '<div class="post-row-body">' +
+          '<p class="post-row-title">' + esc(fmtSchedDate(k)) + '</p>' +
+          '<div class="post-row-meta"><span class="post-date">' + (scheduleOverrides[k] || []).length + ' sáv</span></div>' +
+        '</div>' +
+        '<div class="post-row-actions">' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-sched-edit="' + esc(k) + '">Szerkesztés</button>' +
+          '<button type="button" class="btn btn-danger btn-sm" data-sched-remove="' + esc(k) + '">Törlés</button>' +
+        '</div>';
+      schedOverrideList.appendChild(row);
+    });
+  }
+
+  schedOverrideList.addEventListener('click', function (e) {
+    var editKey = e.target.getAttribute('data-sched-edit');
+    var delKey = e.target.getAttribute('data-sched-remove');
+    if (editKey) {
+      schedDate.value = editKey;
+      loadDateIntoEditor(editKey);
+      schedDate.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (delKey) {
+      if (!confirm('Biztosan törlöd ezt az egyedi napot (' + fmtSchedDate(delKey) + ')? Visszaáll a heti alap-műsorrendre.')) return;
+      delete scheduleOverrides[delKey];
+      renderSchedOverrideList();
+      if (schedDate.value === delKey) loadDefaultForDate(delKey);
+      saveAll('Törölve — visszaállt az alap-műsorrend erre a napra (' + fmtSchedDate(delKey) + ')');
+    }
+  });
+})();
+</script>
+</body>
+</html>

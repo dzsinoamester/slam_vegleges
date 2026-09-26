@@ -21,8 +21,8 @@ var DAYS_SHORT = ['Hét','Ke','Sze','Csüt','Pén','Szo','Vas'];
 var HU_MONTHS_ABBR = ['JAN','FEBR','MÁRC','ÁPR','MÁJ','JÚN','JÚL','AUG','SZEPT','OKT','NOV','DEC'];
 
 var DJ_PHOTOS = {
+  'Club Vibes Radio': 'img/01/cvr.png',
   // 'Kalla Dzsínó': 'img/01/dzsino2.png',
-  'Club Vibes Radio': 'img/01',
   // 'Rázga Zsombor': 'img/01/zsombi.png',
   'Rudy Cassago': 'img/01/gdc.svg',
   'Armin Van Buuren': 'img/01/armin.png',
@@ -86,7 +86,7 @@ var SHOWS = {
     {time:'07:00',end:'08:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'08:00',end:'09:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'09:00',end:'10:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
-    {time:'10:00',end:'11:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixmsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
+    {time:'10:00',end:'12:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixmsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'11:00',end:'12:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'12:00',end:'13:00',name:'DJ DARK BY WEEKENDER', dj:'DJ Dark', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
     {time:'13:00',end:'14:00',name:'WEEKENDER', dj:'', desc:'A SLAM leghosszabb elektronikus mixműsora a hétvége elkezdéséhez.',genre:'Music',initial:'WEEKENDER'},
@@ -131,3 +131,80 @@ var SHOWS = {
     {time:'21:00',end:'00:00',name:'ChillOUT WEEKEND', dj:'', desc:'Megállás nélkül a legjobb lazító mixek a vasárnapi esti pihenéshez.',genre:'Music',initial:'CHILL'},
   ]
 };
+
+/* =========================================================
+   SLAM_SCHEDULE — dátum szerinti (naptári) felülírások.
+
+   A fenti SHOWS tömb az ISMÉTLŐDŐ HETI SABLON (hétfő..vasárnap) —
+   ez marad az alapértelmezett minden olyan napra, amire nincs
+   egyedi bejegyzés. Az admin.html "Műsorrend" szekciójában viheted
+   fel egy-egy KONKRÉT NAPTÁRI NAPRA (pl. 2026-10-01) az attól a
+   naptól eltérő műsorrendet — akár jóval előre is eltervezve.
+   Ezeket a felülírásokat ugyanabból a JSONBinből olvassuk ki, amit
+   az admin ír (ugyanaz a Bin, mint a TRENDING-hez használt posts —
+   csak egy másik kulcs alatt, "schedule.overrides.<ÉÉÉÉ-HH-NN>").
+
+   HASZNÁLAT az oldalakon (index.html, musorrend.html):
+   ne közvetlenül a SHOWS[hétnapja]-t olvasd ki egy adott naptári
+   napra, hanem: SLAM_SCHEDULE.getShowsFor(dateObjektum) — ez adja
+   vissza a felülírást, ha van, egyébként a heti sablont.
+   Mivel a betöltés hálózati kérés (aszinkron), az oldal saját
+   renderelő kódja várja meg a SLAM_SCHEDULE.ready Promise-t az
+   első kirajzolás előtt, hogy ne "villanjon" a sablon-adat. */
+var SLAM_SCHEDULE = (function () {
+  /* ugyanaz a Bin, mint az admin.html / index.html TRENDING-betöltőjében —
+    csak olvasunk belőle (GET), ezért ez biztonságos a nyilvános oldalról is */
+  var BIN_ID = '6ab81713ffd5d160533258e1';
+  var ACCESS_KEY = '$2a$10$tHygSCdawfvQ90N6VE3oZuAZmT54JPXd9r0xcS32v5YPc767U12Pm';
+  var JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID + '/latest';
+
+  var overrides = {}; /* 'ÉÉÉÉ-HH-NN' -> [ {time,end,name,dj,desc,genre,initial,url,photo}, ... ] */
+
+  function dateKey(d) {
+    var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+  }
+  function weekdayIdx(d) {
+    var jd = d.getDay();
+    return jd === 0 ? 6 : jd - 1;
+  }
+  /* a megadott Date-hez tartozó műsorsáv: egyedi felülírás (akár ÜRES tömb
+    is lehet, ha a napra szándékosan nincs adás felvíve), egyébként a heti
+    sablon (SHOWS[a nap hétköznapja]) */
+  function getShowsFor(d) {
+    var key = dateKey(d);
+    if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key];
+    return SHOWS[weekdayIdx(d)] || [];
+  }
+  function hasOverride(d) {
+    return Object.prototype.hasOwnProperty.call(overrides, dateKey(d));
+  }
+
+  function refresh() {
+    return fetch(JSONBIN_URL, { headers: { 'X-Access-Key': ACCESS_KEY } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('JSONBin GET ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var record = data && data.record;
+        var sched = record && record.schedule;
+        if (sched && sched.overrides && typeof sched.overrides === 'object') {
+          overrides = sched.overrides;
+        }
+      })
+      .catch(function (err) {
+        console.error('SLAM: nem sikerült a műsorrend-felülírásokat betölteni, a heti alap-műsorrend marad érvényben.', err);
+      });
+  }
+
+  var api = {
+    ready: refresh(),      /* az első betöltés Promise-a */
+    refresh: refresh,      /* újra lekérdezhető (pl. időzítve), hogy admin-szerkesztés után frissüljön a nyílvános oldal is */
+    getShowsFor: getShowsFor,
+    hasOverride: hasOverride,
+    dateKey: dateKey,
+    weekdayIdx: weekdayIdx
+  };
+  return api;
+})();
